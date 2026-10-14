@@ -1,0 +1,635 @@
+#+title: Config
+* Preamble
+Since I switch between GUI and Ghostty, some configurations are specific to each. I have created two predicates to represent each side.
+
+#+begin_src elisp
+(defun my/ghostty-p ()
+  (and (not (display-graphic-p)) ; returns true if using gui
+       (or (equal (getenv "TERM_PROGRAM") "ghostty")
+           (equal (getenv "TERM_PROGRAM") "xterm-ghostty")))
+(defun my/gui-p ()
+  (display-graphic-p))
+#+end_src
+This can then be used like:
+~~(when (my/ghostty-p)
+(message "Running inside ghostty"))~~
+or
+~~(when (my/gui-p)
+(message "Running in GUI"))~~
+
+* Code
+** Visuals
+This determines the style of line numbers in effect. If set to ~nil~, line
+numbers are disabled. For relative line numbers, set this to ~relative~.
+#+begin_src elisp :tangle config.el
+(setq display-line-numbers-type 'relative)
+#+end_src
+** QOL Keybindings
+#+begin_src elisp :tangle config.el
+(map! :leader :desc "Open code action menu" :n "c a" #'lsp-execute-code-action)
+#+end_src
+** Java
+#+begin_src elisp :tangle config.el
+(after! lsp-java
+  ;; JVM used to launch JDTLS
+  (setq lsp-java-java-path
+        "/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java")
+  ;; JVM I actually use in dev
+  (setq lsp-java-configuration-runtimes
+        '[(:name "JavaSE-17"
+                 :path "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home"
+                 :default t)]))
+#+end_src
+*** Configure the Java debugger
+**** Configure the actual debugger
+#+begin_src elisp :tangle config.el
+(after! dap-mode
+  (require 'dap-java)
+
+  ;; Enable debugging UI
+  (dap-auto-configure-mode 1)
+
+  ;; Show variables and stack frames
+  (setq dap-auto-configure-features
+        '(sessions locals controls tooltip))
+
+  ;; Show variable values on hover
+(dap-tooltip-mode 1))
+#+end_src
+**** Add keybindings
+#+begin_src elisp :tangle config.el
+(after! dap-mode
+  (map! :leader
+        (:prefix ("d" . "debug")
+         :desc "Toggle breakpoint" "b"
+         #'dap-breakpoint-toggle
+         :desc "Debug JUnit method" "t"
+         #'dap-java-debug-test-method
+         :desc "Debug JUnit class" "T"
+         #'dap-java-debug-test-class
+         :desc "Step over" "n"
+         #'dap-next
+         :desc "Step into" "i"
+         #'dap-step-in
+         :desc "Step out" "o"
+         #'dap-step-out
+         :desc "Continue" "c"
+         #'dap-continue
+         :desc "Inspect variable" "e"
+         #'dap-eval-thing-at-point
+         :desc "Disconnect" "q"
+         #'dap-disconnect)))
+#+end_src
+
+#+RESULTS:
+
+** LLM Auto completion
+For LLM auto completion (think Copilot), I have installed
+
+Download to packages.el ellama and the required LLM backend
+#+begin_src elisp :tangle packages.el
+(package! minuet
+  :recipe (:host github :repo "milanglacier/minuet-ai.el"))
+#+end_src
+
+Now to configure it
+#+begin_src elisp :tangle config.el
+(use-package! minuet
+  :defer t
+  :init
+  ;; enable automatic ghost text suggestion in prog buffers
+  (add-hook 'prog-mode-hook #'minuet-auto-suggestion-mode)
+
+  :config
+  (setq minuet-provider 'openai-fim-compatible
+        minuet-n-completions 1
+        minuet-context-window 1024
+        minuet-request-timeout 10)
+  ;; Connect to clocal ollama
+(plist-put minuet-openai-fim-compatible-options
+           :end-point "http://localhost:11434/v1/completions")
+(plist-put minuet-openai-fim-compatible-options
+           :name "Ollama")
+;; No need for authentification
+(plist-put minuet-openai-fim-compatible-options
+           :api-key (lambda () "ollama"))
+
+(plist-put minuet-openai-fim-compatible-options
+           :model "qwen2.5-coder:7b")
+(minuet-set-optional-options
+ minuet-openai-fim-compatible-options
+ :max_tokens 128) ; we don't want generations too long. change this if we want to increaes it.
+
+;; Ghost text controls in Evil insert mode
+(map! :map minuet-active-mode-map
+      :i "M-l" #'minuet-accept-suggestion
+      :i "M-j" #'minuet-accept-suggestion-line
+      :i "M-n" #'minuet-next-suggestion
+      :i "M-l" #'minuet-accept-suggestion
+      )
+)
+#+end_src
+
+* Email
+#+begin_src elisp :tangle config.el
+(add-to-list 'load-path "/opt/homebrew/Cellar/mu/1.14.3/share/emacs/site-lisp/mu/mu4e")
+(require 'mu4e)
+#+end_src
+
+* INIT.EL
+#+begin_src elisp :tangle init_.el
+;;; $DOOMDIR/init.el -*- lexical-binding: t; -*-
+
+;; This file controls what Doom modules are enabled and what order they load
+;; in. Remember to run 'doom sync' after modifying it!
+
+;; NOTE: Press 'SPC h d h' (or 'C-h d h' for non-vim users) to access Doom's
+;;   documentation. There you'll find a link to Doom's Module Index where all of
+;;   our modules are listed, including what flags they support.
+
+;; NOTE: Move your cursor over a module's name (or its flags) and press 'K' (or
+;;   'C-c c k' for non-vim users) to view its documentation. This works on flags
+;;   as well (those symbols that start with a plus).
+;;
+;;   Alternatively, press 'gd' (or 'C-c c d') on a module to browse its
+;;   directory (for easy access to its source code).
+
+(doom! :input
+       ;;bidi              ; (tfel ot) thgir etirw uoy gnipleh
+       ;;chinese
+       ;;japanese
+       ;;layout            ; auie,ctsrnm is the superior home row
+
+       :completion
+       ;;company           ; the ultimate code completion backend
+       (corfu +orderless)  ; complete with cap(f), cape and a flying feather!
+       ;;helm              ; the *other* search engine for love and life
+       ;;ido               ; the other *other* search engine...
+       ;;ivy               ; a search engine for love and life
+       vertico           ; the search engine of the future
+
+       :ui
+       ;;deft              ; notational velocity for Emacs
+       doom              ; what makes DOOM look the way it does
+       dashboard         ; a nifty splash screen for Emacs
+       ;;doom-quit         ; DOOM quit-message prompts when you quit Emacs
+       ;;(emoji +unicode)  ; 🙂
+       hl-todo           ; highlight TODO/FIXME/NOTE/DEPRECATED/HACK/REVIEW
+       ;;indent-guides     ; highlighted indent columns
+       ;;ligatures         ; ligatures and symbols to make your code pretty again
+       ;;minimap           ; show a map of the code on the side
+       modeline          ; snazzy, Atom-inspired modeline, plus API
+       ;;nav-flash         ; blink cursor line after big motions
+       ;;neotree           ; a project drawer, like NERDTree for vim
+       ophints           ; highlight the region an operation acts on
+       (popup +defaults)   ; tame sudden yet inevitable temporary windows
+       ;;smooth-scroll     ; So smooth you won't believe it's not butter
+       ;;tabs              ; a tab bar for Emacs
+       ;;treemacs          ; a project drawer, like neotree but cooler
+       ;;unicode           ; extended unicode support for various languages
+       (vc-gutter +pretty) ; vcs diff in the fringe
+       vi-tilde-fringe   ; fringe tildes to mark beyond EOB
+       ;;window-select     ; visually switch windows
+       workspaces        ; tab emulation, persistence & separate workspaces
+       ;;zen               ; distraction-free coding or writing
+
+       :editor
+       (evil +everywhere); come to the dark side, we have cookies
+       file-templates    ; auto-snippets for empty files
+       fold              ; (nigh) universal code folding
+       ;;(format +onsave)  ; automated prettiness
+       ;;god               ; run Emacs commands without modifier keys
+       ;;lispy             ; vim for lisp, for people who don't like vim
+       ;;multiple-cursors  ; editing in many places at once
+       ;;objed             ; text object editing for the innocent
+       ;;parinfer          ; turn lisp into python, sort of
+       ;;rotate-text       ; cycle region at point between text candidates
+       snippets          ; my elves. They type so I don't have to
+       (whitespace +guess +trim)  ; a butler for your whitespace
+       ;;word-wrap         ; soft wrapping with language-aware indent
+
+       :emacs
+       dired             ; making dired pretty [functional]
+       electric          ; smarter, keyword-based electric-indent
+       ;;eww               ; the internet is gross
+       ;;ibuffer           ; interactive buffer management
+       tramp             ; remote files at your arthritic fingertips
+       undo              ; persistent, smarter undo for your inevitable mistakes
+       vc                ; version-control and Emacs, sitting in a tree
+
+       :term
+       ;;eshell            ; the elisp shell that works everywhere
+       ;;shell             ; simple shell REPL for Emacs
+       ;;term              ; basic terminal emulator for Emacs
+       ;;vterm             ; almost the best terminal emulation in Emacs
+       ghostel           ; the best terminal emulation in Emacs
+
+       :checkers
+       syntax              ; tasing you for every semicolon you forget
+       ;;(spell +flyspell) ; tasing you for misspelling mispelling
+       ;;grammar           ; tasing grammar mistake every you make
+
+       :tools
+       ;;ansible
+       ;;biblio            ; Writes a PhD for you (citation needed)
+       ;;collab            ; buffers with friends
+       (debugger +lsp)          ; stepping through code, to help you add bugs
+       ;;direnv
+       ;;docker
+       ;;editorconfig      ; let someone else argue about tabs vs spaces
+       ;;ein               ; tame Jupyter notebooks with emacs
+       (eval +overlay)     ; run code, run (also, repls)
+       lookup              ; navigate your code and its documentation
+       llm               ; when I said you needed friends, I didn't mean...
+       lsp
+       ;;(lsp +eglot)      ; M-x vscode
+       magit             ; a git porcelain for Emacs
+       ;;make              ; run make tasks from Emacs
+       ;;pass              ; password manager for nerds
+       ;;pdf               ; pdf enhancements
+       ;;terraform         ; infrastructure as code
+       ;;tmux              ; an API for interacting with tmux
+       ;;tree-sitter       ; syntax and parsing, sitting in a tree...
+       ;;upload            ; map local to remote projects via ssh/ftp
+
+       :os
+       (:if (featurep :system 'macos) macos)  ; improve compatibility with macOS
+       ;;tty               ; improve the terminal Emacs experience
+
+       :lang
+       ;;ada               ; In strong typing we (blindly) trust
+       ;;(agda +local)     ; types of types of types of types...
+       ;;beancount         ; mind the GAAP
+       ;;(cc +lsp)         ; C > C++ == 1
+       ;;clojure           ; java with a lisp
+       ;;common-lisp       ; if you've seen one lisp, you've seen them all
+       ;;coq               ; proofs-as-programs
+       ;;crystal           ; ruby at the speed of c
+       ;;csharp            ; unity, .NET, and mono shenanigans
+       ;;data              ; config/data formats
+       ;;(dart +flutter)   ; paint ui and not much else
+       ;;dhall
+       ;;elixir            ; erlang done right
+       ;;elm               ; care for a cup of TEA?
+       emacs-lisp        ; drown in parentheses
+       ;;erlang            ; an elegant language for a more civilized age
+       ;;ess               ; emacs speaks statistics
+       ;;factor
+       ;;faust             ; dsp, but you get to keep your soul
+       ;;fortran           ; in FORTRAN, GOD is REAL (unless declared INTEGER)
+       ;;fsharp            ; ML stands for Microsoft's Language
+       ;;fstar             ; (dependent) types and (monadic) effects and Z3
+       ;;gdscript          ; the language you waited for
+       ;;(go +lsp)         ; the hipster dialect
+       ;;(graphql +lsp)    ; Give queries a REST
+       ;;(haskell +lsp)    ; a language that's lazier than I am
+       ;;hy                ; readability of scheme w/ speed of python
+       ;;idris             ; a language you can depend on
+       ;;json              ; At least it ain't XML
+       ;;janet             ; Fun fact: Janet is me!
+       (java +lsp)       ; the poster child for carpal tunnel syndrome
+       ;;javascript        ; all(hope(abandon(ye(who(enter(here))))))
+       ;;julia             ; a better, faster MATLAB
+       ;;kotlin            ; a better, slicker Java(Script)
+       ;;latex             ; writing papers in Emacs has never been so fun
+       ;;lean              ; for folks with too much to prove
+       ;;ledger            ; be audit you can be
+       ;;lua               ; one-based indices? one-based indices
+       markdown          ; writing docs for people to ignore
+       ;;nim               ; python + lisp at the speed of c
+       ;;nix               ; I hereby declare "nix geht mehr!"
+       ;;ocaml             ; an objective camel
+       ;;odin              ; C, minus its footguns
+       org               ; organize your plain life in plain text
+       ;;php               ; perl's insecure younger brother
+       ;;plantuml          ; diagrams for confusing people more
+       ;;graphviz          ; diagrams for confusing yourself even more
+       ;;purescript        ; javascript, but functional
+       ;;python            ; beautiful is better than ugly
+       ;;qt                ; the 'cutest' gui framework ever
+       ;;racket            ; a DSL for DSLs
+       ;;raku              ; the artist formerly known as perl6
+       ;;rest              ; Emacs as a REST client
+       ;;rst               ; ReST in peace
+       ;;(ruby +rails)     ; 1.step {|i| p "Ruby is #{i.even? ? 'love' : 'life'}"}
+       ;;(rust +lsp)       ; Fe2O3.unwrap().unwrap().unwrap().unwrap()
+       ;;scad              ; trust the preview, regret the render
+       ;;scala             ; java, but good
+       ;;(scheme +guile)   ; a fully conniving family of lisps
+       sh                ; she sells {ba,z,fi}sh shells on the C xor
+       ;;sml
+       ;;solidity          ; do you need a blockchain? No.
+       ;;swift             ; who asked for emoji variables?
+       ;;terra             ; Earth and Moon in alignment for performance.
+       ;;web               ; the tubes
+       ;;yaml              ; JSON, but readable
+       ;;zig               ; C, but simpler
+
+       :email
+;;       (mu4e +org +gmail)
+       ;;notmuch
+       ;;(wanderlust +gmail)
+
+       :app
+       ;;calendar
+       ;;emms
+       ;;everywhere        ; *leave* Emacs!? You must be joking
+       ;;irc               ; how neckbeards socialize
+       ;;(rss +org)        ; emacs as an RSS reader
+
+       :config
+       literate
+       (default +bindings +smartparens))
+
+;; If you're a dark-mode user who suffers from the "flash of white Emacs" when
+;; you first open Emacs, uncomment this (and adjust the color as you like).
+;; (add-to-list 'initial-frame-alist '(background-color . "#000000"))
+#+end_src
+* PACKAGES.EL
+#+begin_src elisp :tangle packages_.el
+;;; $DOOMDIR/packages.el -*- lexical-binding: t; no-byte-compile: t -*-
+
+;; To install a package:
+;;
+;;   1. Declare them here in a `package!' statement,
+;;   2. Run 'doom sync' in the shell,
+;;   3. Restart Emacs.
+
+;; Use 'C-h f package\!' to look up documentation for the `package!' macro.
+
+;; To install SOME-PACKAGE from MELPA, ELPA or emacsmirror:
+;; (package! some-package)
+
+;; To install a package directly from a remote git repo, you must specify a
+;; `:recipe'. You'll find documentation on what `:recipe' accepts here:
+;; https://github.com/radian-software/straight.el#the-recipe-format
+;; (package! another-package
+;;   :recipe (:host github :repo "username/repo"))
+
+;; If the package you are trying to install does not contain a PACKAGENAME.el
+;; file, or is located in a subdirectory of the repo, you'll need to specify
+;; `:files' in the `:recipe':
+;; (package! this-package
+;;   :recipe (:host github :repo "username/repo"
+;;            :files ("some-file.el" "src/lisp/*.el")))
+
+;; If you'd like to disable a package included with Doom, you can do so here
+;; with the `:disable' property:
+;; (package! builtin-package :disable t)
+
+;; You can override the recipe of a built in package without having to specify
+;; all the properties for `:recipe'. These will inherit the rest of its recipe
+;; from Doom or MELPA/ELPA/Emacsmirror:
+;; (package! builtin-package :recipe (:nonrecursive t))
+;; (package! builtin-package-2 :recipe (:repo "myfork/package"))
+
+;; Specify a `:branch' to install a package from a particular branch or tag.
+;; This is required for some packages whose default branch isn't 'master' (which
+;; our package manager can't deal with; see radian-software/straight.el#279)
+;; (package! builtin-package :recipe (:branch "develop"))
+
+;; Use `:pin' to specify a particular commit to install.
+;; (package! builtin-package :pin "1a2b3c4d5e")
+
+
+;; Doom's packages are pinned to a specific commit and updated from release to
+;; release. The `unpin!' macro allows you to unpin single packages...
+;; (unpin! pinned-package)
+;; ...or multiple packages
+;; (unpin! pinned-package another-pinned-package)
+;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
+;; (unpin! t)
+#+end_src
+* CONFIG.EL
+#+begin_src elisp :tangle CONFIG_.el
+;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
+
+;; Place your private configuration here! Remember, you do not need to run 'doom
+;; sync' after modifying this file!
+
+
+;; Some functionality uses this to identify you, e.g. GPG configuration, email
+;; clients, file templates and snippets. It is optional.
+;; (setq user-full-name "John Doe"
+;;       user-mail-address "john@doe.com")
+
+;; Doom exposes five (optional) variables for controlling fonts in Doom:
+;;
+;; - `doom-font' -- the primary font to use
+;; - `doom-variable-pitch-font' -- a non-monospace font (where applicable)
+;; - `doom-big-font' -- used for `doom-big-font-mode'; use this for
+;;   presentations or streaming.
+;; - `doom-symbol-font' -- for symbols
+;; - `doom-serif-font' -- for the `fixed-pitch-serif' face
+;;
+;; See 'C-h v doom-font' for documentation and more examples of what they
+;; accept. For example:
+;;
+;;(setq doom-font (font-spec :family "Fira Code" :size 12 :weight 'semi-light)
+;;      doom-variable-pitch-font (font-spec :family "Fira Sans" :size 13))
+;;
+;; If you or Emacs can't find your font, use 'M-x describe-font' to look them
+;; up, `M-x eval-region' to execute elisp code, and 'M-x doom/reload-font' to
+;; refresh your font settings. If Emacs still can't find your font, it likely
+;; wasn't installed correctly. Font issues are rarely Doom issues!
+
+
+;; If you use `org' and don't want your org files in the default location below,
+;; change `org-directory'. It must be set before org loads!
+
+
+;; Whenever you reconfigure a package, make sure to wrap your config in an
+;; `with-eval-after-load' block, otherwise Doom's defaults may override your
+;; settings. E.g.
+;;
+;;   (with-eval-after-load 'PACKAGE
+;;     (setq x y))
+;;
+;; The exceptions to this rule:
+;;
+;;   - Setting file/directory variables (like `org-directory')
+;;   - Setting variables which explicitly tell you to set them before their
+;;     package is loaded (see 'C-h v VARIABLE' to look them up).
+;;   - Setting doom variables (which start with 'doom-' or '+').
+;;
+;; Here are some additional functions/macros that will help you configure Doom.
+;;
+;; - `load!' for loading external *.el files relative to this one
+;; - `add-load-path!' for adding directories to the `load-path', relative to
+;;   this file. Emacs searches the `load-path' when you load packages with
+;;   `require' or `use-package'.
+;; - `map!' for binding new keys
+;;
+;; To get information about any of these functions/macros, move the cursor over
+;; the highlighted symbol at press 'K' (non-evil users must press 'C-c c k').
+;; This will open documentation for it, including demos of how they are used.
+;; Alternatively, use `C-h o' to look up a symbol (functions, variables, faces,
+;; etc).
+;;
+;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
+;; they are implemented.
+#+end_src
+** Terminal
+Select a terminal emulator.
+#+begin_src elisp :tangle init_.el
+       :term
+       ;;eshell            ; the elisp shell that works everywhere
+       ;;shell             ; simple shell REPL for Emacs
+       ;;term              ; basic terminal emulator for Emacs
+       ;;vterm             ; almost the best terminal emulation in Emacs
+       ghostel           ; the best terminal emulation in Emacs
+#+end_src
+
+We need to make some special allowances for if emacs is running in Ghostty
+*** Ghostty Compatability
+Ghostty sets TERM=xterm-ghostty, Emacs does not ship a matching ~term/xterm-ghostty.el~ file yet, so reuse the standard xterm initialization.
+#+begin_src elisp :tangle config_.el
+(when (my/ghostty-p) (add-to-list 'term-file-aliases '("xterm-ghostty" . "xterm")))
+#+end_src
+**** Clipboard
+On MacOS, for some reason, ghostty or emacs does not get along well with the system clipboard.
+#+begin_src elisp :tangle init_.el
+(when (my/ghostty-p)
+  (package! clipetty))
+#+end_src
+
+Clipetty sends clipboard data via OSC 52, which is natively handles by ghostty
+#+begin_src elisp :tangle config_.el
+(when (my/ghostty-p)
+  (use-package! clipetty :hook (after-init . global-clipetty-mode)))
+#+end_src
+
+Set up "evil" paste
+#+begin_src elisp :tangle config_.el
+(when (my/ghostty-p) (after! evil
+  (setq select-enable-clipboard t
+        save-interprogram-paste-before-kill t
+        evil-default-register ?+)))
+#+end_src
+* Visual / Wrap Navigation
+#+begin_src elisp :tangle config_.el
+(map!
+    :nvm "k" #'evil-previous-visual-line
+    :nvm "k"   #'evil-previous-visual-line
+    :o   "k"   #'evil-previous-line
+    :nvm "j" #'evil-next-visual-line
+    :o   "j" #'evil-next-line
+ )
+#+end_src
+* Org
+Add org file locations
+#+begin_src elisp :tangle config_.el
+(after! org
+    (setq org-directory "~/org/"
+        org-agenda-files (append
+                            (directory-files-recursively (expand-file-name "~/org/") "\\.org$")
+                            (directory-files-recursively (expand-file-name "~/wci/") "\\.org$")
+                            (directory-files-recursively (expand-file-name "~/simkincpa/") "\\.org$")
+                        )
+    )
+)
+#+end_src
+** Org Journal
+Install
+#+begin_src elisp :tangle packages_.el
+(package! org-journal)
+#+end_src
+Configure Package
+#+begin_src elisp :tangle config_.el
+(after! org-journal
+                     (setq org-journal-dir "~/org/journal/"
+                           org-journal-file-format "%Y_%m_%d.org"
+                          org-journal-enable-agenda-integration t))
+#+end_src
+Set up keybinds
+#+begin_src elisp :tangle config_.el
+(map! :leader
+      (:prefix ("o" . "org mode")
+               (:prefix ("j" . "org-mode journal")
+                        :desc "Open last journal entry" "o" #'org-journal-open-current-journal-file
+                        :desc "Create new journal entry" "j" #'org-journal-new-entry)))
+#+end_src
+* Mail
+#+begin_src elisp :tangle init_.el
+       :email
+       (add-to-list 'load-path "/opt/homebrew/Cellar/mu/1.14.3/share/emacs/site-lisp/mu/mu4e")
+       (mu4e +org +gmail)
+#+end_src
+
+#+begin_src elisp :tangle config_.el
+;;; Mail
+
+(after! mu4e
+  (setq mu4e-maildir (expand-file-name "~/.mail")
+        mu4e-get-mail-command "mbsync gmail"
+        sendmail-program (executable-find "msmtp")
+        send-mail-function #'sendmail-send-it
+        message-sendmail-f-is-evil t
+        message-sendmail-extra-arguments '("--read-envelope-from")
+        message-send-mail-function #'message-send-mail-with-sendmail)
+
+  (set-email-account! "gmail"
+    '((mu4e-sent-folder       . "/gmail/[Gmail]/Sent Mail")
+      (mu4e-drafts-folder     . "/gmail/[Gmail]/Drafts")
+      (mu4e-trash-folder      . "/gmail/[Gmail]/Trash")
+      (mu4e-refile-folder     . "/gmail/[Gmail]/All Mail")
+      (smtpmail-smtp-user     . "esimkin@westcoastinformatics.com")
+      (user-mail-address      . "esimkin@westcoastinformatics.com")
+      (user-full-name         . "elijahsimkin"))
+    t))
+
+#+end_src
+* Neovim Motions
+We want to restore / add some of the functionality from neovim.
+
++ Allow for motions inside the mini-buffer similar to neovim's ;;
+#+begin_src elisp :tangle config_.el
+    (define-key minibuffer-local-map (kbd "C-f") 'evil-command-window)
+#+end_src
+
++ Restore vanilla vim s substitute functionality
+#+begin_src elisp :tangle config_.el
+    (map! :nv (kbd "s") #'evil-substitute)
+#+end_src
+Try to emulate the oil behavior to return to file explorer while in file by pressing -
+#+begin_src elisp :tangle config_.el
+(map! :map text-modemap
+      :n (kbd "-") (lambda ()
+                     (interactive)
+                     (if buffer-file-name
+                         (dired (file-name-directory buffer-file-name))
+                        (dired default-directory)
+                    )))
+
+;;; WCI Java / Gradle
+
+(after! lsp-java
+  ;; The EVS REST API project targets Java 17 through Gradle's toolchain, while
+  ;; JDTLS itself can run on the installed Homebrew JDK.
+  (setq lsp-java-java-path "/opt/homebrew/opt/openjdk@21/bin/java"
+        lsp-java-save-actions-organize-imports t))
+
+(after! projectile
+  (put 'projectile-project-compilation-cmd 'safe-local-variable #'stringp)
+  (put 'projectile-project-test-cmd 'safe-local-variable #'stringp)
+  (put 'projectile-project-run-cmd 'safe-local-variable #'stringp)
+  (projectile-register-project-type
+   'wci-gradle
+   '("gradlew" "build.gradle")
+   :project-file "build.gradle"
+   :compile "GRADLE_USER_HOME=.gradle-home ./gradlew clean build -x zipFile"
+   :test "GRADLE_USER_HOME=.gradle-home ./gradlew test"
+   :run "GRADLE_USER_HOME=.gradle-home ./gradlew bootRun"))
+#+end_src
+* Theme
+There are two ways to load a theme. Both assume the theme is installed and
+available. You can either set `doom-theme' or manually load a theme with the
+~load-theme~ function. This is the default:
+#+begin_src elisp :tangle config_.el
+(setq doom-theme 'doom-one)
+#+end_src
+Specify both a dark and light theme, like so and Doom will choose which one
+to load based on your system light/dark setting:
+   ~(setq doom-theme '(doom-one   . doom-one-light))   ; (DARK . LIGHT)~
+ If you want more pro-active theme switching based on OS light/dark mode, look
+ up the `auto-dark' package.
