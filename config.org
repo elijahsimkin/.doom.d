@@ -40,6 +40,13 @@ numbers are disabled. For relative line numbers, set this to ~relative~.
 (map! :leader :desc "Open code action menu" :n "c a" #'lsp-execute-code-action)
 #+end_src
 ** Java
+Enable Java
+#+begin_src elisp :tangle init.el
+(doom!
+:lang
+(java +lsp))
+#+end_src
+
 #+begin_src elisp :tangle config.el
 (after! lsp-java
   ;; JVM used to launch JDTLS
