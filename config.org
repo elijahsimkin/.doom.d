@@ -117,11 +117,13 @@ Now to configure it
   :init
   ;; enable automatic ghost text suggestion in prog buffers
   (add-hook 'prog-mode-hook #'minuet-auto-suggestion-mode)
+  (add-hook 'prog-mode-hook #'my/minuet--track-edits)
 
   :config
   (setq minuet-provider 'openai-fim-compatible
         minuet-n-completions 1
-        minuet-context-window 1024
+        minuet-context-window 8000 ; chars, ~2.5k tokens; model's num_ctx is 8192
+        minuet-context-ratio 0.6   ; leave ~3.2k chars after point, e.g. a method body for javadoc
         minuet-request-timeout 10)
   ;; Connect to clocal ollama
 (plist-put minuet-openai-fim-compatible-options
@@ -133,10 +135,11 @@ Now to configure it
            :api-key (lambda () "ollama"))
 
 (plist-put minuet-openai-fim-compatible-options
-           :model "qwen2.5-coder:7b")
+           ;; qwen2.5-coder:3b with num_ctx 8192, built from a Modelfile
+           :model "qwen2.5-coder-8k")
 (minuet-set-optional-options
  minuet-openai-fim-compatible-options
- :max_tokens 128) ; we don't want generations too long. change this if we want to increaes it.
+ :max_tokens 240) ; we don't want generations too long. change this if we want to increaes it.
 
 ;; Ghost text controls in Evil insert mode
 (map! :map minuet-active-mode-map
@@ -474,18 +477,11 @@ To control frames, I have added super (cmd )
        :emacs
        dired             ; making dired pretty [functional]
        electric          ; smarter, keyword-based electric-indent
-       ;;eww               ; the internet is gross
+       eww               ; the internet is gross
        ;;ibuffer           ; interactive buffer management
        tramp             ; remote files at your arthritic fingertips
        undo              ; persistent, smarter undo for your inevitable mistakes
        vc                ; version-control and Emacs, sitting in a tree
-
-       :term
-       ;;eshell            ; the elisp shell that works everywhere
-       ;;shell             ; simple shell REPL for Emacs
-       ;;term              ; basic terminal emulator for Emacs
-       ;;vterm             ; almost the best terminal emulation in Emacs
-       ghostel           ; the best terminal emulation in Emacs
 
        :checkers
        syntax              ; tasing you for every semicolon you forget
@@ -603,10 +599,6 @@ To control frames, I have added super (cmd )
        :config
        literate
        (default +bindings +smartparens))
-
-;; If you're a dark-mode user who suffers from the "flash of white Emacs" when
-;; you first open Emacs, uncomment this (and adjust the color as you like).
-;; (add-to-list 'initial-frame-alist '(background-color . "#000000"))
 #+end_src
 * PACKAGES.EL
 #+begin_src elisp :tangle packages.el
@@ -618,45 +610,45 @@ To control frames, I have added super (cmd )
 ;;   2. Run 'doom sync' in the shell,
 ;;   3. Restart Emacs.
 
-;; Use 'C-h f package\!' to look up documentation for the `package!' macro.
+;; Use 'C-h f package\!' to look up documentation for the package!' macro.
 
 ;; To install SOME-PACKAGE from MELPA, ELPA or emacsmirror:
 ;; (package! some-package)
 
 ;; To install a package directly from a remote git repo, you must specify a
-;; `:recipe'. You'll find documentation on what `:recipe' accepts here:
+;; :recipe'. You'll find documentation on what `:recipe' accepts here:
 ;; https://github.com/radian-software/straight.el#the-recipe-format
 ;; (package! another-package
 ;;   :recipe (:host github :repo "username/repo"))
 
 ;; If the package you are trying to install does not contain a PACKAGENAME.el
 ;; file, or is located in a subdirectory of the repo, you'll need to specify
-;; `:files' in the `:recipe':
+;; :files' in the `:recipe':
 ;; (package! this-package
 ;;   :recipe (:host github :repo "username/repo"
 ;;            :files ("some-file.el" "src/lisp/*.el")))
 
 ;; If you'd like to disable a package included with Doom, you can do so here
-;; with the `:disable' property:
+;; with the :disable' property:
 ;; (package! builtin-package :disable t)
 
 ;; You can override the recipe of a built in package without having to specify
-;; all the properties for `:recipe'. These will inherit the rest of its recipe
+;; all the properties for :recipe'. These will inherit the rest of its recipe
 ;; from Doom or MELPA/ELPA/Emacsmirror:
 ;; (package! builtin-package :recipe (:nonrecursive t))
 ;; (package! builtin-package-2 :recipe (:repo "myfork/package"))
 
-;; Specify a `:branch' to install a package from a particular branch or tag.
+;; Specify a :branch' to install a package from a particular branch or tag.
 ;; This is required for some packages whose default branch isn't 'master' (which
 ;; our package manager can't deal with; see radian-software/straight.el#279)
 ;; (package! builtin-package :recipe (:branch "develop"))
 
-;; Use `:pin' to specify a particular commit to install.
+;; Use :pin' to specify a particular commit to install.
 ;; (package! builtin-package :pin "1a2b3c4d5e")
 
 
 ;; Doom's packages are pinned to a specific commit and updated from release to
-;; release. The `unpin!' macro allows you to unpin single packages...
+;; release. The unpin!' macro allows you to unpin single packages...
 ;; (unpin! pinned-package)
 ;; ...or multiple packages
 ;; (unpin! pinned-package another-pinned-package)
@@ -829,13 +821,14 @@ Set up keybinds
                         :desc "Create new journal entry" "j" #'org-journal-new-entry)))
 #+end_src
 * Mail
-#+begin_src elisp :tangle init_.el
+If I want to enable email. Just add + after the #
+#begin_src elisp :tangle init.el
        :email
        (add-to-list 'load-path "/opt/homebrew/Cellar/mu/1.14.3/share/emacs/site-lisp/mu/mu4e")
        (mu4e +org +gmail)
-#+end_src
+#end_src
 
-#+begin_src elisp :tangle config_.el
+#+begin_src elisp :tangle config.el
 ;;; Mail
 
 (after! mu4e
@@ -884,14 +877,22 @@ Try to emulate the oil behavior to return to file explorer while in file by pres
                         (dired default-directory)
                     )))
 
-;;; WCI Java / Gradle
-
-(after! lsp-java
-  ;; The EVS REST API project targets Java 17 through Gradle's toolchain, while
-  ;; JDTLS itself can run on the installed Homebrew JDK.
-  (setq lsp-java-java-path "/opt/homebrew/opt/openjdk@21/bin/java"
-        lsp-java-save-actions-organize-imports t))
-
+#+end_src
+* Theme
+There are two ways to load a theme. Both assume the theme is installed and
+available. You can either set doom-theme' or manually load a theme with the
+~load-theme~ function. This is the default:
+#+begin_src elisp :tangle config.el
+(setq doom-theme 'doom-one)
+#+end_src
+Specify both a dark and light theme, like so and Doom will choose which one
+to load based on your system light/dark setting:
+   ~(setq doom-theme '(doom-one   . doom-one-light))   ; (DARK . LIGHT)~
+ If you want more pro-active theme switching based on OS light/dark mode, look
+ up the auto-dark' package.
+* WCI Specific Configuration
+** Build Config
+#+begin_src elisp :tangle config.el
 (after! projectile
   (put 'projectile-project-compilation-cmd 'safe-local-variable #'stringp)
   (put 'projectile-project-test-cmd 'safe-local-variable #'stringp)
@@ -904,15 +905,3 @@ Try to emulate the oil behavior to return to file explorer while in file by pres
    :test "GRADLE_USER_HOME=.gradle-home ./gradlew test"
    :run "GRADLE_USER_HOME=.gradle-home ./gradlew bootRun"))
 #+end_src
-* Theme
-There are two ways to load a theme. Both assume the theme is installed and
-available. You can either set `doom-theme' or manually load a theme with the
-~load-theme~ function. This is the default:
-#+begin_src elisp :tangle config_.el
-(setq doom-theme 'doom-one)
-#+end_src
-Specify both a dark and light theme, like so and Doom will choose which one
-to load based on your system light/dark setting:
-   ~(setq doom-theme '(doom-one   . doom-one-light))   ; (DARK . LIGHT)~
- If you want more pro-active theme switching based on OS light/dark mode, look
- up the `auto-dark' package.
