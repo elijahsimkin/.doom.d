@@ -51,11 +51,11 @@ Enable Java
 (after! lsp-java
   ;; JVM used to launch JDTLS
   (setq lsp-java-java-path
-        "/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java")
+        "/opt/homebrew/opt/openjdk@21/bin/java")
   ;; JVM I actually use in dev
   (setq lsp-java-configuration-runtimes
         '[(:name "JavaSE-17"
-                 :path "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home"
+                 :path "/Users/elisimkin/Library/Java/JavaVirtualMachines/openjdk-17.0.2/Contents/Home"
                  :default t)]))
 #+end_src
 *** Configure the Java debugger
@@ -742,8 +742,7 @@ Ghostty sets TERM=xterm-ghostty, Emacs does not ship a matching ~term/xterm-ghos
 **** Clipboard
 On MacOS, for some reason, ghostty or emacs does not get along well with the system clipboard.
 #+begin_src elisp :tangle packages.el
-(when (my/ghostty-p)
-  (package! clipetty))
+(package! clipetty)
 #+end_src
 
 Clipetty sends clipboard data via OSC 52, which is natively handles by ghostty
@@ -861,7 +860,7 @@ We want to restore / add some of the functionality from neovim.
 
 + Restore vanilla vim s substitute functionality
   We have to disable the package which is capturing the keybind first.
-  #+begin_src elisp :tangle package.el
+  #+begin_src elisp :tangle packages.el
   (package! evil-snipe :disable t)
   #+end_src
   #+begin_src elisp :tangle config.el
@@ -869,7 +868,7 @@ We want to restore / add some of the functionality from neovim.
 #+end_src
 Try to emulate the oil behavior to return to file explorer while in file by pressing -
 #+begin_src elisp :tangle config.el
-(map! :map text-modemap
+(map! :map text-mode-map
       :n (kbd "-") (lambda ()
                      (interactive)
                      (if buffer-file-name
@@ -904,4 +903,20 @@ to load based on your system light/dark setting:
    :compile "GRADLE_USER_HOME=.gradle-home ./gradlew clean build -x zipFile"
    :test "GRADLE_USER_HOME=.gradle-home ./gradlew test"
    :run "GRADLE_USER_HOME=.gradle-home ./gradlew bootRun"))
+#+end_src
+* iCloud
+I often want many of my folders synced with iCloud but I don't want to change their path from the easy to access =~= ~($HOME)~ directory. MacOS already does this with folders like =~/Documents= which are technically located in the iCloud folder but are accessible from home.
+
+To emulate this behavior (without breaking emacs), we need to use the Unix ~soft link~ functionality. Invocabale wit the command ~ln -sfn~ for ~symbolic~, ~force~, and ~no-dereference~. This is specifically as opposed to the inbuilt MacOS ~alias~ term.
+
+** Steps
+1. Move the FOLDER to ==$HOME/Library/Mobile Documents/com~apple~CloudDocs/$FOLDER==
+2. Make the link, setting =FOLDER= equal to the folder you just moved.
+#+begin_src zsh
+FOLDER = 'projects' # the folder 'projects' is just a example
+ln -sfn "$HOME/Library/Mobile Documents/com~apple~CloudDocs/$FOLDER" "$HOME/$FOLDER"
+#+end_src
+@3. Make sure that in the config you have this enabled. I have already tangeld it into my ~config.el~.
+#+begin_src elisp :tangle config.el
+(setq find-file-visit-truename t)
 #+end_src
