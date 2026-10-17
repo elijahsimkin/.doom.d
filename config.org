@@ -2,13 +2,24 @@
 * Preamble
 Since I switch between GUI and Ghostty, some configurations are specific to each. I have created two predicates to represent each side.
 
+#+name: predicates
 #+begin_src elisp
 (defun my/ghostty-p ()
   (and (not (display-graphic-p)) ; returns true if using gui
        (or (equal (getenv "TERM_PROGRAM") "ghostty")
-           (equal (getenv "TERM_PROGRAM") "xterm-ghostty")))
+           (equal (getenv "TERM_PROGRAM") "xterm-ghostty"))))
 (defun my/gui-p ()
   (display-graphic-p))
+#+end_src
+Entangle throughout the config so it's accessible everywhere
+#+begin_src elisp :tangle init.el :noweb yes
+<<predicates>>
+#+end_src
+#+begin_src elisp :tangle config.el :noweb yes
+<<predicates>>
+#+end_src
+#+begin_src elisp :tangle packages.el :noweb yes
+<<predicates>>
 #+end_src
 This can then be used like:
 ~~(when (my/ghostty-p)
@@ -136,8 +147,19 @@ Now to configure it
 (require 'mu4e)
 #+end_src
 
+* Window Management
+We want to add some QOL keybinds following our traditional window managemnet keybinds.
+To control windows, C-w is the traditional prefix.
+To control frames, I have added super (cmd )
+#+begin_src elisp :tangle config.el
+(map! :nv (kbd "C-w s-n") #'make-frame-command)
+(map! :nv (kbd "C-w s-`") #'other-frame)
+#+end_src
+
+#+RESULTS:
+
 * INIT.EL
-#+begin_src elisp :tangle init_.el
+#+begin_src elisp :tangle init.el
 ;;; $DOOMDIR/init.el -*- lexical-binding: t; -*-
 
 ;; This file controls what Doom modules are enabled and what order they load
@@ -346,12 +368,12 @@ Now to configure it
 ;; (add-to-list 'initial-frame-alist '(background-color . "#000000"))
 #+end_src
 * PACKAGES.EL
-#+begin_src elisp :tangle packages_.el
+#+begin_src elisp :tangle packages.el
 ;;; $DOOMDIR/packages.el -*- lexical-binding: t; no-byte-compile: t -*-
 
 ;; To install a package:
 ;;
-;;   1. Declare them here in a `package!' statement,
+;;   1. Declare them here in a package!' statement,
 ;;   2. Run 'doom sync' in the shell,
 ;;   3. Restart Emacs.
 
@@ -401,7 +423,23 @@ Now to configure it
 ;; (unpin! t)
 #+end_src
 * CONFIG.EL
-#+begin_src elisp :tangle CONFIG_.el
+** Font
+ Doom exposes five (optional) variables for controlling fonts in Doom:
+
+- ~doom-font~ -- the primary font to use
+ - ~doom-variable-pitch-font'~ -- a non-monospace font (where applicable)
+ - ~doom-big-font'~ -- used for `doom-big-font-mode'; use this for
+   presentations or streaming.
+ - ~doom-symbol-font'~ -- for symbols
+ - ~doom-serif-font'~ -- for the `fixed-pitch-serif' face
+
+ See ~C-h v doom-font~ for documentation and more examples of what they accept. For example:
+~~(setq doom-font (font-spec :family "Fira Code" :size 12 :weight 'semi-light)
+doom-variable-pitch-font (font-spec :family "Fira Sans" :size 13))~~
+
+If you or Emacs can't find your font, use 'M-x describe-font' to look them up, M-x eval-region' to execute elisp code, and 'M-x doom/reload-font' to refresh your font settings. If Emacs still can't find your font, it likely wasn't installed correctly. Font issues are rarely Doom issues!
+
+#+begin_src elisp :tangle config.el
 ;;; $DOOMDIR/config.el -*- lexical-binding: t; -*-
 
 ;; Place your private configuration here! Remember, you do not need to run 'doom
@@ -413,33 +451,13 @@ Now to configure it
 ;; (setq user-full-name "John Doe"
 ;;       user-mail-address "john@doe.com")
 
-;; Doom exposes five (optional) variables for controlling fonts in Doom:
-;;
-;; - `doom-font' -- the primary font to use
-;; - `doom-variable-pitch-font' -- a non-monospace font (where applicable)
-;; - `doom-big-font' -- used for `doom-big-font-mode'; use this for
-;;   presentations or streaming.
-;; - `doom-symbol-font' -- for symbols
-;; - `doom-serif-font' -- for the `fixed-pitch-serif' face
-;;
-;; See 'C-h v doom-font' for documentation and more examples of what they
-;; accept. For example:
-;;
-;;(setq doom-font (font-spec :family "Fira Code" :size 12 :weight 'semi-light)
-;;      doom-variable-pitch-font (font-spec :family "Fira Sans" :size 13))
-;;
-;; If you or Emacs can't find your font, use 'M-x describe-font' to look them
-;; up, `M-x eval-region' to execute elisp code, and 'M-x doom/reload-font' to
-;; refresh your font settings. If Emacs still can't find your font, it likely
-;; wasn't installed correctly. Font issues are rarely Doom issues!
 
-
-;; If you use `org' and don't want your org files in the default location below,
-;; change `org-directory'. It must be set before org loads!
+;; If you use org' and don't want your org files in the default location below,
+;; change org-directory'. It must be set before org loads!
 
 
 ;; Whenever you reconfigure a package, make sure to wrap your config in an
-;; `with-eval-after-load' block, otherwise Doom's defaults may override your
+;; with-eval-after-load' block, otherwise Doom's defaults may override your
 ;; settings. E.g.
 ;;
 ;;   (with-eval-after-load 'PACKAGE
@@ -447,23 +465,23 @@ Now to configure it
 ;;
 ;; The exceptions to this rule:
 ;;
-;;   - Setting file/directory variables (like `org-directory')
+;;   - Setting file/directory variables (like org-directory')
 ;;   - Setting variables which explicitly tell you to set them before their
 ;;     package is loaded (see 'C-h v VARIABLE' to look them up).
 ;;   - Setting doom variables (which start with 'doom-' or '+').
 ;;
 ;; Here are some additional functions/macros that will help you configure Doom.
 ;;
-;; - `load!' for loading external *.el files relative to this one
-;; - `add-load-path!' for adding directories to the `load-path', relative to
-;;   this file. Emacs searches the `load-path' when you load packages with
-;;   `require' or `use-package'.
-;; - `map!' for binding new keys
+;; - load!' for loading external *.el files relative to this one
+;; - add-load-path!' for adding directories to the `load-path', relative to
+;;   this file. Emacs searches the load-path' when you load packages with
+;;   require' or `use-package'.
+;; - map!' for binding new keys
 ;;
 ;; To get information about any of these functions/macros, move the cursor over
 ;; the highlighted symbol at press 'K' (non-evil users must press 'C-c c k').
 ;; This will open documentation for it, including demos of how they are used.
-;; Alternatively, use `C-h o' to look up a symbol (functions, variables, faces,
+;; Alternatively, use C-h o' to look up a symbol (functions, variables, faces,
 ;; etc).
 ;;
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
@@ -471,78 +489,98 @@ Now to configure it
 #+end_src
 ** Terminal
 Select a terminal emulator.
-#+begin_src elisp :tangle init_.el
+#+begin_src elisp :tangle init.el
+(doom!
        :term
        ;;eshell            ; the elisp shell that works everywhere
        ;;shell             ; simple shell REPL for Emacs
        ;;term              ; basic terminal emulator for Emacs
        ;;vterm             ; almost the best terminal emulation in Emacs
        ghostel           ; the best terminal emulation in Emacs
+)
 #+end_src
 
 We need to make some special allowances for if emacs is running in Ghostty
 *** Ghostty Compatability
 Ghostty sets TERM=xterm-ghostty, Emacs does not ship a matching ~term/xterm-ghostty.el~ file yet, so reuse the standard xterm initialization.
-#+begin_src elisp :tangle config_.el
+#+begin_src elisp :tangle config.el
 (when (my/ghostty-p) (add-to-list 'term-file-aliases '("xterm-ghostty" . "xterm")))
 #+end_src
 **** Clipboard
 On MacOS, for some reason, ghostty or emacs does not get along well with the system clipboard.
-#+begin_src elisp :tangle init_.el
+#+begin_src elisp :tangle packages.el
 (when (my/ghostty-p)
   (package! clipetty))
 #+end_src
 
 Clipetty sends clipboard data via OSC 52, which is natively handles by ghostty
-#+begin_src elisp :tangle config_.el
+#+begin_src elisp :tangle config.el
 (when (my/ghostty-p)
   (use-package! clipetty :hook (after-init . global-clipetty-mode)))
 #+end_src
 
 Set up "evil" paste
-#+begin_src elisp :tangle config_.el
+#+begin_src elisp :tangle config.el
 (when (my/ghostty-p) (after! evil
   (setq select-enable-clipboard t
         save-interprogram-paste-before-kill t
         evil-default-register ?+)))
 #+end_src
-* Visual / Wrap Navigation
-#+begin_src elisp :tangle config_.el
-(map!
-    :nvm "k" #'evil-previous-visual-line
-    :nvm "k"   #'evil-previous-visual-line
-    :o   "k"   #'evil-previous-line
-    :nvm "j" #'evil-next-visual-line
-    :o   "j" #'evil-next-line
- )
+
+=SPC o t= opens a new terminal in the current window every time, in the current
+buffer's directory (=*ghostel*=, =*ghostel*<2>=, ...).
+#+begin_src elisp :tangle config.el
+(defun my/ghostel-new ()
+  "Open a new ghostel terminal in the current window."
+  (interactive)
+  ;; A non-numeric prefix makes `ghostel' create the next free instance.
+  (ghostel '(4)))
+
+(map! :leader
+      :desc "New ghostel here" "o t" #'my/ghostel-new)
 #+end_src
+* Visual / Wrap Navigation
+To add visual line mode we can just tangle this into the config
+~~(setq global-visual-line-mode t)~~
+Or turn on visual-line-mode globally/in text modes
+~~(add-hook 'text-mode-hook #'visual-line-mode)~~
 * Org
 Add org file locations
-#+begin_src elisp :tangle config_.el
+#+begin_src elisp :tangle config.el
 (after! org
     (setq org-directory "~/org/"
         org-agenda-files (append
-                            (directory-files-recursively (expand-file-name "~/org/") "\\.org$")
-                            (directory-files-recursively (expand-file-name "~/wci/") "\\.org$")
-                            (directory-files-recursively (expand-file-name "~/simkincpa/") "\\.org$")
+                          (let ((org-path "~/org"))
+                            (when (file-directory-p org-path)
+                              (directory-files-recursively
+                               (expand-file-name org-path) "\\.org$")))
+
+                          (let ((org-path "~/wci"))
+                            (when (file-directory-p org-path)
+                              (directory-files-recursively
+                               (expand-file-name org-path) "\\.org$")))
+                          (let ((org-path "~/simkincpa"))
+                            (when (file-directory-p org-path)
+                              (directory-files-recursively
+                               (expand-file-name org-path) "\\.org$")))
                         )
     )
 )
 #+end_src
 ** Org Journal
 Install
-#+begin_src elisp :tangle packages_.el
+#+begin_src elisp :tangle packages.el
 (package! org-journal)
 #+end_src
 Configure Package
-#+begin_src elisp :tangle config_.el
+#+begin_src elisp :tangle config.el
 (after! org-journal
                      (setq org-journal-dir "~/org/journal/"
                            org-journal-file-format "%Y_%m_%d.org"
                           org-journal-enable-agenda-integration t))
 #+end_src
 Set up keybinds
-#+begin_src elisp :tangle config_.el
+#+begin_src elisp :tangle config.el
 (map! :leader
       (:prefix ("o" . "org mode")
                (:prefix ("j" . "org-mode journal")
@@ -583,16 +621,20 @@ Set up keybinds
 We want to restore / add some of the functionality from neovim.
 
 + Allow for motions inside the mini-buffer similar to neovim's ;;
-#+begin_src elisp :tangle config_.el
+#+begin_src elisp :tangle config.el
     (define-key minibuffer-local-map (kbd "C-f") 'evil-command-window)
 #+end_src
 
 + Restore vanilla vim s substitute functionality
-#+begin_src elisp :tangle config_.el
-    (map! :nv (kbd "s") #'evil-substitute)
+  We have to disable the package which is capturing the keybind first.
+  #+begin_src elisp :tangle package.el
+  (package! evil-snipe :disable t)
+  #+end_src
+  #+begin_src elisp :tangle config.el
+  (map! :nv (kbd "s") #'evil-substitute)
 #+end_src
 Try to emulate the oil behavior to return to file explorer while in file by pressing -
-#+begin_src elisp :tangle config_.el
+#+begin_src elisp :tangle config.el
 (map! :map text-modemap
       :n (kbd "-") (lambda ()
                      (interactive)
