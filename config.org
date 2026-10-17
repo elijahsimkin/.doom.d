@@ -144,8 +144,242 @@ Now to configure it
       :i "M-j" #'minuet-accept-suggestion-line
       :i "M-n" #'minuet-next-suggestion
       :i "M-l" #'minuet-accept-suggestion
+      ;; Only active while a suggestion is showing, so TAB works as usual otherwise.
+      ;; Bind both: GUI sends <tab>, the terminal sends TAB.
+      :i "TAB" #'minuet-accept-suggestion
+      :i [tab] #'minuet-accept-suggestion
       )
 )
+
+#+end_src
+
+Give the LLM more context and a way to steer it. The FIM prompt gets a comment
+header listing the definition line of every imenu symbol in the buffer (cached,
+re-scanned at most every few seconds), so the model sees definitions outside the
+context window. It also lists the lines around your last few edits, but only the
+ones outside the text already sent around the cursor, so typing in place costs
+nothing extra and jumping elsewhere still tells the model what you just did.
+=M-i= (or =SPC l c=) requests a suggestion on demand, and =M-I=
+(or =SPC l i=) asks what you want in the minibuffer and adds it as a TODO comment
+above the cursor line.
+#+begin_src elisp :tangle config.el
+(defvar my/minuet-max-symbols 80
+  "Maximum number of buffer symbols sent to the LLM as context.")
+(defvar my/minuet-symbol-refresh-interval 5
+  "Seconds before a modified buffer is re-scanned for symbols.")
+(defvar my/minuet-instruction nil
+  "Instruction for the current request, bound by `my/minuet-complete-with-instruction'.")
+(defvar-local my/minuet--symbol-cache nil
+  "List of (TICK TIME LINES) from the last symbol scan of this buffer.")
+(defvar my/minuet-max-recent-edits 3
+  "Maximum number of recent edit locations sent to the LLM as context.")
+(defvar my/minuet-recent-edit-context-lines 1
+  "Lines shown above and below each recent edit.")
+(defvar-local my/minuet--recent-edits nil
+  "Markers at this buffer's recent edits, most recent first, one per line.")
+
+(defun my/minuet--comment (text)
+  "Format TEXT as a single-line comment in the current major mode."
+  (concat (string-trim-right (or comment-start "#")) " " text
+          (if (and comment-end (not (string-empty-p comment-end)))
+              (concat " " (string-trim comment-end))
+            "")))
+
+(defun my/minuet--imenu-positions (index)
+  "Flatten the imenu INDEX into a list of buffer positions."
+  (cl-loop for item in index
+           append (if (imenu--subalist-p item)
+                      (my/minuet--imenu-positions (cdr item))
+                    (let ((pos (if (consp (cdr item)) (cadr item) (cdr item))))
+                      (when (overlayp pos) (setq pos (overlay-start pos)))
+                      (when (markerp pos) (setq pos (marker-position pos)))
+                      ;; the *Rescan* entry has a negative position
+                      (when (and (integerp pos) (> pos 0)) (list pos))))))
+
+(defun my/minuet--scan-symbols ()
+  "Return the definition line of every imenu symbol in the buffer."
+  (let* ((index (condition-case nil
+                    (save-excursion (imenu--make-index-alist t))
+                  (error nil)))
+         (positions (sort (delete-dups (my/minuet--imenu-positions index)) #'<)))
+    (save-excursion
+      (save-restriction
+        (widen)
+        (delete-dups
+         (cl-loop for pos in positions
+                  for line = (progn (goto-char pos)
+                                    (string-trim (buffer-substring-no-properties
+                                                  (line-beginning-position)
+                                                  (line-end-position))))
+                  unless (string-empty-p line)
+                  collect (truncate-string-to-width line 120 nil nil "...")))))))
+
+(defun my/minuet--buffer-symbols ()
+  "Return the buffer's symbol lines, re-scanning at most every few seconds."
+  (pcase-let ((`(,tick ,time ,lines) my/minuet--symbol-cache))
+    (if (and my/minuet--symbol-cache
+             (or (eq tick (buffer-chars-modified-tick))
+                 (< (float-time (time-since time)) my/minuet-symbol-refresh-interval)))
+        lines
+      (let ((lines (my/minuet--scan-symbols)))
+        (setq my/minuet--symbol-cache
+              (list (buffer-chars-modified-tick) (current-time) lines))
+        lines))))
+
+(defun my/minuet--insert-instruction (before instruction)
+  "Put INSTRUCTION as a comment on the line above the cursor in BEFORE."
+  (let* ((bol (if (string-match "\n[^\n]*\\'" before) (1+ (match-beginning 0)) 0))
+         (current-line (substring before bol))
+         (indent (progn (string-match "\\`[ \t]*" current-line)
+                        (match-string 0 current-line))))
+    (concat (substring before 0 bol)
+            indent (my/minuet--comment (concat "TODO: " instruction)) "\n"
+            current-line)))
+
+(defun my/minuet--record-edit (beg _end _len)
+  "Remember BEG as the most recent edit, keeping one marker per line."
+  (let ((bol (save-excursion (goto-char beg) (line-beginning-position))))
+    (setq my/minuet--recent-edits
+          (cl-remove-if (lambda (m)
+                          (when (or (not (marker-buffer m))
+                                    (= bol (save-excursion (goto-char m) (line-beginning-position))))
+                            (set-marker m nil)
+                            t))
+                        my/minuet--recent-edits))
+    (push (copy-marker beg) my/minuet--recent-edits)
+    (when (> (length my/minuet--recent-edits) my/minuet-max-recent-edits)
+      (mapc (lambda (m) (set-marker m nil))
+            (nthcdr my/minuet-max-recent-edits my/minuet--recent-edits))
+      (setcdr (nthcdr (1- my/minuet-max-recent-edits) my/minuet--recent-edits) nil))))
+
+(defun my/minuet--track-edits ()
+  "Track edit locations in this buffer for `my/minuet--recent-edit-lines'."
+  (add-hook 'after-change-functions #'my/minuet--record-edit nil t))
+
+(defun my/minuet--recent-edit-lines (ctx)
+  "Comment lines showing recent edits that lie outside the context in CTX.
+Edits inside the text already sent around point are left out, since the
+model sees them anyway."
+  (let ((visible-start (- (point) (length (plist-get ctx :before-cursor))))
+        (visible-end (+ (point) (length (plist-get ctx :after-cursor))))
+        (n my/minuet-recent-edit-context-lines)
+        shown)
+    (save-excursion
+      (save-restriction
+        (widen)
+        (cl-loop for m in my/minuet--recent-edits
+                 for pos = (marker-position m)
+                 when (and pos (or (< pos visible-start) (> pos visible-end)))
+                 append
+                 (progn
+                   (goto-char pos)
+                   (let ((line (line-number-at-pos))
+                         (start (line-beginning-position (- 1 n)))
+                         (end (line-end-position (1+ n))))
+                     ;; skip edits whose lines were already shown
+                     (unless (cl-some (lambda (r) (and (<= start (cdr r)) (>= end (car r))))
+                                      shown)
+                       (push (cons start end) shown)
+                       (cons (my/minuet--comment (format "  near line %d:" line))
+                             (mapcar (lambda (l) (my/minuet--comment (concat "    " l)))
+                                     (split-string (buffer-substring-no-properties start end)
+                                                   "\n")))))))))))
+
+(defun my/minuet-fim-prompt (ctx)
+  "FIM prompt from CTX, with the buffer's symbols, recent edits and any instruction added."
+  (let ((symbols (seq-take (my/minuet--buffer-symbols) my/minuet-max-symbols))
+        (edits (my/minuet--recent-edit-lines ctx))
+        (before (plist-get ctx :before-cursor)))
+    (when my/minuet-instruction
+      (setq before (my/minuet--insert-instruction before my/minuet-instruction)))
+    (concat (plist-get ctx :language-and-tab) "\n"
+            (my/minuet--comment (concat "file: " (buffer-name))) "\n"
+            (when symbols
+              (concat (my/minuet--comment "symbols defined in this file:") "\n"
+                      (mapconcat (lambda (line) (my/minuet--comment (concat "  " line)))
+                                 symbols "\n")
+                      "\n\n"))
+            (when edits
+              (concat (my/minuet--comment "my recent edits elsewhere in this file, most recent first:") "\n"
+                      (string-join edits "\n")
+                      "\n\n"))
+            before)))
+
+(defun my/minuet--request ()
+  "Request a suggestion at point without the auto-suggestion timer cancelling it."
+  (setq minuet--auto-last-point (point)
+        minuet--last-auto-suggestion-time (current-time))
+  (minuet-show-suggestion))
+
+(defun my/minuet-complete ()
+  "Ask the LLM for a completion at point now."
+  (interactive)
+  (require 'minuet)
+  (my/minuet--request))
+
+(defun my/minuet-complete-with-instruction (instruction)
+  "Ask the LLM for a completion at point that follows INSTRUCTION."
+  (interactive (list (read-string "Tell the LLM: ")))
+  (require 'minuet)
+  ;; Instructed edits tend to be longer, so allow more time and tokens.
+  (let ((my/minuet-instruction instruction)
+        (minuet-request-timeout (max minuet-request-timeout 30))
+        (minuet-openai-fim-compatible-options
+         (copy-tree minuet-openai-fim-compatible-options)))
+    (minuet-set-optional-options minuet-openai-fim-compatible-options :max_tokens 1024)
+    (my/minuet--request)))
+
+
+(defvar my/minuet-debug nil
+  "When non-nil, log every prompt and response to the *minuet-debug* buffer.")
+
+(defun my/minuet--debug-log (label text)
+  "Append TEXT under LABEL to the *minuet-debug* buffer."
+  (with-current-buffer (get-buffer-create "*minuet-debug*")
+    (goto-char (point-max))
+    (insert (format "\n===== %s %s =====\n%s\n"
+                    label (format-time-string "%T") (or text "")))
+    ;; keep any window showing the log scrolled to the newest entry
+    (dolist (win (get-buffer-window-list (current-buffer) nil t))
+      (set-window-point win (point-max)))))
+
+(defun my/minuet--debug-request (request)
+  "Log the prompt and suffix of REQUEST when `my/minuet-debug' is on."
+  (when my/minuet-debug
+    (let ((body (plist-get request :body)))
+      (my/minuet--debug-log (format "PROMPT (%s)" (plist-get body :model))
+                            (plist-get body :prompt))
+      (my/minuet--debug-log "SUFFIX" (plist-get body :suffix))))
+  request)
+
+(defun my/minuet--debug-response (result)
+  "Log the decoded model RESULT when `my/minuet-debug' is on."
+  (when my/minuet-debug
+    (my/minuet--debug-log "RESPONSE" result))
+  result)
+
+(defun my/minuet-toggle-debug ()
+  "Toggle logging of LLM prompts and responses to *minuet-debug*."
+  (interactive)
+  (setq my/minuet-debug (not my/minuet-debug))
+  (when my/minuet-debug
+    (display-buffer (get-buffer-create "*minuet-debug*")))
+  (message "Minuet debug logging %s" (if my/minuet-debug "on" "off")))
+
+(after! minuet
+  (plist-put (plist-get minuet-openai-fim-compatible-options :template)
+             :prompt #'my/minuet-fim-prompt)
+  (plist-put minuet-openai-fim-compatible-options
+             :transform (list #'my/minuet--debug-request))
+  (advice-add 'minuet--stream-decode :filter-return #'my/minuet--debug-response))
+
+(map! :i "M-i" #'my/minuet-complete
+      :i "M-I" #'my/minuet-complete-with-instruction
+      :leader
+      (:prefix ("l" . "llm")
+       :desc "Complete at point" :n "c" #'my/minuet-complete
+       :desc "Complete with instruction" :n "i" #'my/minuet-complete-with-instruction
+       :desc "Toggle prompt/response log" :n "d" #'my/minuet-toggle-debug))
 #+end_src
 
 * Email
