@@ -819,6 +819,11 @@ Set up keybinds
                         :desc "Open last journal entry" "o" #'org-journal-open-current-journal-file
                         :desc "Create new journal entry" "j" #'org-journal-new-entry)))
 #+end_src
+** Org Clock
+This tracks time that is still being clocked (i.e. see how much time you're racking up before you've clocked out)
+#+begin_src elisp :tangle config.el
+(setq org-clock-report-include-clocking-task t)
+#+end_src
 * Mail
 If I want to enable email. Just add + after the #
 #begin_src elisp :tangle init.el
