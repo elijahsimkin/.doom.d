@@ -925,3 +925,8 @@ ln -sfn "$HOME/Library/Mobile Documents/com~apple~CloudDocs/$FOLDER" "$HOME/$FOL
 #+begin_src elisp :tangle config.el
 (setq find-file-visit-truename t)
 #+end_src
+* Version Management / Git
+I want to be able to use vim motions when starting magit
+#+begin_src elisp :tangle config.el
+(add-hook! 'magit-status-mode-hook #'evil-normal-state)
+#+end_src
