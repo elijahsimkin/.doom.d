@@ -930,3 +930,51 @@ I want to be able to use vim motions when starting magit
 #+begin_src elisp :tangle config.el
 (add-hook! 'magit-status-mode-hook #'evil-normal-state)
 #+end_src
+
+** Claude Code
+
+Integrate Claude Code with Emacs using Ghostel as the
+terminal backend.
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! claude-code
+  :recipe (:host github
+           :repo "stevemolitor/claude-code.el"))
+#+end_src
+
+   #+begin_src emacs-lisp :tangel config.el
+(use-package! claude-code
+  :config
+  (setq claude-code-terminal-backend 'ghostel)
+  (claude-code-mode)
+  (map! :leader
+        (:prefix ("C" . "Claude")
+         :desc "Claude menu" "m" #'claude-code-transient
+         :desc "Claude toggle" "t" #'claude-code-toggle
+         :desc "Send region" "r" #'claude-code-send-region)))
+#+end_src
+
+** Inline Code Review
+
+Annotate Git diffs with review comments and collect
+feedback for Claude Code.
+
+#+begin_src emacs-lisp :tangle packages.el
+(package! hunk-notes
+  :recipe (:host github
+           :repo "ArthurHeymans/emacs-hunk-notes"
+           :files ("*.el")))
+#+end_src
+
+   #+begin_src emacs-lisp :tangle config.el
+(use-package! hunk-notes
+  :after magit
+  :config
+  (require 'hunk-notes-git)
+  (require 'hunk-notes-magit)
+
+  (setq hunk-notes-auto-enable-in-diff-buffers t
+        hunk-notes-prompt-diff-scope 'commented-hunks
+        hunk-notes-default-agent 'copy
+        hunk-notes-auto-submit-to-agent nil))
+#+end_src
