@@ -912,7 +912,7 @@ To emulate this behavior (without breaking emacs), we need to use the Unix ~soft
 ** Steps
 1. Move the FOLDER to ==$HOME/Library/Mobile Documents/com~apple~CloudDocs/$FOLDER==
 2. Make the link, setting =FOLDER= equal to the folder you just moved.
-#+begin_src zsh
+#+begin_src zsh :tangle no
 FOLDER = 'projects' # the folder 'projects' is just a example
 ln -sfn "$HOME/Library/Mobile Documents/com~apple~CloudDocs/$FOLDER" "$HOME/$FOLDER"
 #+end_src
