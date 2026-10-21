@@ -819,6 +819,11 @@ Set up keybinds
                         :desc "Open last journal entry" "o" #'org-journal-open-current-journal-file
                         :desc "Create new journal entry" "j" #'org-journal-new-entry)))
 #+end_src
+** Org Clock
+This tracks time that is still being clocked (i.e. see how much time you're racking up before you've clocked out)
+#+begin_src elisp :tangle config.el
+(setq org-clock-report-include-clocking-task t)
+#+end_src
 * Mail
 If I want to enable email. Just add + after the #
 #begin_src elisp :tangle init.el
@@ -919,4 +924,9 @@ ln -sfn "$HOME/Library/Mobile Documents/com~apple~CloudDocs/$FOLDER" "$HOME/$FOL
 @3. Make sure that in the config you have this enabled. I have already tangeld it into my ~config.el~.
 #+begin_src elisp :tangle config.el
 (setq find-file-visit-truename t)
+#+end_src
+* Version Management / Git
+I want to be able to use vim motions when starting magit
+#+begin_src elisp :tangle config.el
+(add-hook! 'magit-status-mode-hook #'evil-normal-state)
 #+end_src
