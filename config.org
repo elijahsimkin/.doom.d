@@ -888,7 +888,8 @@ Set up keybinds
 ** Org Clock
 This tracks time that is still being clocked (i.e. see how much time you're racking up before you've clocked out)
 #+begin_src elisp :tangle config.el
-(setq org-clock-report-include-clocking-task t)
+(after! org
+(setq org-clock-report-include-clocking-task t))
 #+end_src
 * Mail
 If I want to enable email. Just add + after the #
