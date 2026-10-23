@@ -39,6 +39,72 @@ numbers are disabled. For relative line numbers, set this to ~relative~.
 #+begin_src elisp :tangle config.el
 (map! :leader :desc "Open code action menu" :n "c a" #'lsp-execute-code-action)
 #+end_src
+** Hide Comments
+Toggle with =SPC t /= to hide every comment (Javadoc included) and read only the code.
+#+begin_src elisp :tangle config.el
+(defvar-local my/hidden-comment-overlays nil
+  "Overlays hiding this buffer's comments while `my/hide-comments-mode' is on.")
+
+(defun my/get-has-lines-to-itself (comment-start comment-end)
+  "Return non-nil when only whitespace shares lines with the comment from COMMENT-START to COMMENT-END."
+  (save-excursion
+    (goto-char comment-start)
+    (skip-chars-backward " \t")
+    (and (bolp)
+         (progn (goto-char comment-end)
+                (or (bolp)
+                    (progn (skip-chars-forward " \t") (eolp)))))))
+
+(defun my/get-comment-region (comment-start)
+  "Return (START . END) of the comment at COMMENT-START.
+A comment with its lines to itself is widened to whole lines so hiding it
+leaves no blank line behind; a trailing comment keeps the code before it."
+  (save-excursion
+    (goto-char comment-start)
+    (unless (forward-comment 1)
+      (goto-char (point-max)))
+    (let ((comment-end (point)))
+      (if (not (my/get-has-lines-to-itself comment-start comment-end))
+          ;; A line comment ends past its newline; keep that newline for the code
+          (cons comment-start (if (bolp) (1- comment-end) comment-end))
+        (unless (bolp)
+          (forward-line 1))
+        (cons (save-excursion (goto-char comment-start) (line-beginning-position))
+              (point))))))
+
+(defun my/make-hiding-overlay (region)
+  "Return an overlay making REGION, a (START . END) pair, invisible."
+  (let ((overlay (make-overlay (car region) (cdr region) nil t nil)))
+    (overlay-put overlay 'invisible t)
+    (overlay-put overlay 'evaporate t)
+    overlay))
+
+(defun my/hide-comments ()
+  "Hide every comment in the buffer, Javadoc included."
+  (save-excursion
+    (goto-char (point-min))
+    (let (comment-start)
+      (while (setq comment-start (comment-search-forward (point-max) t))
+        (let ((region (my/get-comment-region comment-start)))
+          (push (my/make-hiding-overlay region) my/hidden-comment-overlays)
+          (goto-char (cdr region)))))))
+
+(define-minor-mode my/hide-comments-mode
+  "Hide comments, Javadoc included, so only code shows.
+Comments written while the mode is on stay visible until it is toggled again."
+  :lighter " NoComments"
+  (mapc #'delete-overlay my/hidden-comment-overlays)
+  (setq my/hidden-comment-overlays nil)
+  (when my/hide-comments-mode
+    (let ((has-comment-syntax (and comment-start t)))
+      (unless has-comment-syntax
+        (my/hide-comments-mode -1)
+        (user-error "This buffer's mode has no comment syntax")))
+    (comment-normalize-vars)
+    (my/hide-comments)))
+
+(map! :leader :desc "Hide comments" "t /" #'my/hide-comments-mode)
+#+end_src
 ** Java
 Enable Java
 #+begin_src elisp :tangle init.el
