@@ -117,11 +117,11 @@ Enable Java
 (after! lsp-java
   ;; JVM used to launch JDTLS
   (setq lsp-java-java-path
-        "/opt/homebrew/opt/openjdk@21/bin/java")
+        "/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home/bin/java")
   ;; JVM I actually use in dev
   (setq lsp-java-configuration-runtimes
         '[(:name "JavaSE-17"
-                 :path "/Users/elisimkin/Library/Java/JavaVirtualMachines/openjdk-17.0.2/Contents/Home"
+                 :path "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home"
                  :default t)]))
 #+end_src
 *** Configure the Java debugger
