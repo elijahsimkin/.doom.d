@@ -625,7 +625,7 @@ To control frames, I have added super (cmd )
        ;;nix               ; I hereby declare "nix geht mehr!"
        ;;ocaml             ; an objective camel
        ;;odin              ; C, minus its footguns
-       org               ; organize your plain life in plain text
+       ;;(org +pretty)               ; organize your plain life in plain text
        ;;php               ; perl's insecure younger brother
        ;;plantuml          ; diagrams for confusing people more
        ;;graphviz          ; diagrams for confusing yourself even more
@@ -843,6 +843,11 @@ To add visual line mode we can just tangle this into the config
 Or turn on visual-line-mode globally/in text modes
 ~~(add-hook 'text-mode-hook #'visual-line-mode)~~
 * Org
+#+begin_src elisp :tangle init.el
+(doom! :lang
+       (org +pretty)               ; organize your plain life in plain text
+)
+#+end_src
 Add org file locations
 #+begin_src elisp :tangle config.el
 (after! org
