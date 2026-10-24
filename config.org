@@ -1001,7 +1001,6 @@ I want to be able to use vim motions when starting magit
 #+end_src
 
 ** Claude Code
-
 Integrate Claude Code with Emacs using Ghostel as the
 terminal backend.
 
@@ -1022,7 +1021,19 @@ terminal backend.
          :desc "Claude toggle" "t" #'claude-code-toggle
          :desc "Send region" "r" #'claude-code-send-region)))
 #+end_src
-
+*** Claude Code IDE
+#+begin_src elisp :tangle packages.el
+(package! claude-code-ide
+  :recipe (:host github :repo "manzaltu/claude-code-ide.el"))
+#+end_src
+#+begin_src elisp :tangle config.el
+(use-package! claude-code-ide
+  :bind ("C-c C-'" . claude-code-ide-menu)
+  :config
+  (claude-code-ide-emacs-tools-setup)
+  )
+(setq claude-code-ide-terminal-backend 'ghostel)
+#+end_src
 ** Inline Code Review
 
 Annotate Git diffs with review comments and collect
