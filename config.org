@@ -1028,14 +1028,14 @@ terminal backend.
 Annotate Git diffs with review comments and collect
 feedback for Claude Code.
 
-#+begin_src emacs-lisp :tangle packages.el
+,#+begin_src emacs-lisp :tangle packages.el
 (package! hunk-notes
   :recipe (:host github
            :repo "ArthurHeymans/emacs-hunk-notes"
            :files ("*.el")))
 #+end_src
 
-   #+begin_src emacs-lisp :tangle config.el
+   ,#+begin_src emacs-lisp :tangle config.el
 (use-package! hunk-notes
   :after magit
   :config
