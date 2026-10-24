@@ -721,7 +721,7 @@ To control frames, I have added super (cmd )
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;; (unpin! t)
 #+end_src
-* CONFIG.EL
+* Configuration Guide
 ** Font
  Doom exposes five (optional) variables for controlling fonts in Doom:
 
@@ -786,7 +786,7 @@ If you or Emacs can't find your font, use 'M-x describe-font' to look them up, M
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
 #+end_src
-** Terminal
+* Terminal
 Select a terminal emulator.
 #+begin_src elisp :tangle init.el
 (doom!
@@ -800,12 +800,12 @@ Select a terminal emulator.
 #+end_src
 
 We need to make some special allowances for if emacs is running in Ghostty
-*** Ghostty Compatability
+** Ghostty Compatability
 Ghostty sets TERM=xterm-ghostty, Emacs does not ship a matching ~term/xterm-ghostty.el~ file yet, so reuse the standard xterm initialization.
 #+begin_src elisp :tangle config.el
 (when (my/ghostty-p) (add-to-list 'term-file-aliases '("xterm-ghostty" . "xterm")))
 #+end_src
-**** Clipboard
+*** Clipboard
 On MacOS, for some reason, ghostty or emacs does not get along well with the system clipboard.
 #+begin_src elisp :tangle packages.el
 (package! clipetty)
@@ -924,12 +924,10 @@ If I want to enable email. Just add + after the #
 #+end_src
 * Neovim Motions
 We want to restore / add some of the functionality from neovim.
-
 + Allow for motions inside the mini-buffer similar to neovim's ;;
-#+begin_src elisp :tangle config.el
-    (define-key minibuffer-local-map (kbd "C-f") 'evil-command-window)
-#+end_src
-
+  #+begin_src elisp :tangle config.el
+  (define-key minibuffer-local-map (kbd "C-f") 'evil-command-window)
+  #+end_src
 + Restore vanilla vim s substitute functionality
   We have to disable the package which is capturing the keybind first.
   #+begin_src elisp :tangle packages.el
@@ -937,18 +935,17 @@ We want to restore / add some of the functionality from neovim.
   #+end_src
   #+begin_src elisp :tangle config.el
   (map! :nv (kbd "s") #'evil-substitute)
-#+end_src
-Try to emulate the oil behavior to return to file explorer while in file by pressing -
-#+begin_src elisp :tangle config.el
-(map! :map text-mode-map
+  #+end_src
++ Try to emulate the oil behavior to return to file explorer while in file by pressing -
+  #+begin_src elisp :tangle config.el
+  (map! :map text-mode-map
       :n (kbd "-") (lambda ()
-                     (interactive)
-                     (if buffer-file-name
-                         (dired (file-name-directory buffer-file-name))
-                        (dired default-directory)
-                    )))
-
-#+end_src
+                      (interactive)
+                      (if buffer-file-name
+                          (dired (file-name-directory buffer-file-name))
+                          (dired default-directory)
+                      )))
+  #+end_src
 * Theme
 There are two ways to load a theme. Both assume the theme is installed and
 available. You can either set doom-theme' or manually load a theme with the
