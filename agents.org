@@ -1,0 +1,339 @@
+#+title: Agents
+#+begin_src md :tangle ~/.claude/claude.md
+# Behavior Guide
+For smaller tasks where an agent with less context would still perform fine, delegate to an agent with smaller context and/or who is not as intelligent who will report back to you to avoid avoid polluting main context with subtask related information or wasting tokens. Make sure to save the chain of thought though so if you need to consult it later, you can.
+
+# Style Guide
+
+Anti-patterns:
+## Magic Values
+### Magic Numbers
+Bad:
+
+    if (account.getStatus().equals("dormant")) {
+      fee = account.getBalance() * 0.0125;
+    }
+Good:
+
+    final String dormantStatus = "dormant";
+    final double dormantAccountFeeRate = 0.0125;
+### Magic Conditions
+Bad:
+
+    if (!CollectionUtils.isEmpty(pendingTrades)) {
+      for (final Trade pendingTrade : pendingTrades) {
+        ledger.record(pendingTrade);
+      }
+    }
+Good:
+
+    final bool hasTradesToRecord = !CollectionUtils.isEmpty(pendingTrades);
+    if (shouldRecordTrades) {
+      for (final Trade pendingTrade : pendingTrades) {
+        ledger.record(pendingTrade);
+      }
+    }
+# Naming Guide
+In typed languages, use types to convey type information.
+Bad:
+
+    Map<Integer, Boolean> intMap;
+Good:
+
+    Map<Integer, Boolean> map;
+
+Better:
+
+    // Indicates what it stores and gives implicit names to the values
+    Map<Integer, Boolean> processIdToActive;
+
+Best:
+
+    // Indicates intent. Answers the question, why does this variable exist?
+    Map<Integer, Boolean> shouldKillProcessId;
+
+Best (in languages with type aliasing, using when makes sense in context. Don't be redundant.):
+
+    using ProcessId = int;
+    using ShouldBeKilled = bool;
+    Map<ProcessId, ShouldBeKilled> shouldKillProcessId;
+
+Variable, function and class names should broadly follow these rules:
+
+Functions should be a verb.
+Variables should be nouns.
+
+Prefixes:
+Data retrieval
+ - `get` When getting or computing a local value
+ - `fetch` when going out to retrieve a value
+
+Predicates variables
+ - `is`
+ - `has`
+
+ - `should` used to indicate whether or not a set of actions should proceed.
+
+Predicate functions (these help us intellisense search)
+ - `getIs`
+ - `getHas`
+ - `getShould`
+
+Data setting:
+ - `set`
+
+ Avoid using "not" in the name. That can be conveyed with '!' (unless working in high performance code where ! operation is less expensive than caching it).
+
+### Conditions Are Predicates
+A query, filter, or matcher stands for a yes/no condition, so name it like a predicate (`is`, `has`,
+`should`), even though its type isn't `boolean`. Spell out what is compared to what.
+
+Bad:
+
+    final Filter currencyFilter = Filters.equal("currency", accountCurrency);
+
+Better:
+
+    final Filter accountCurrencyFilter = Filters.equal("currency", accountCurrency);
+
+Best:
+
+    final Filter hasCurrencyMatchingAccountCurrency = Filters.equal("currency", accountCurrency);
+
+### Name Functions For What They Return
+Name a function for its result, not for the data structure it walks. If it checks a collection,
+say whether one item or every item has to match.
+
+Bad:
+
+    Filter getHoldingFilter(Filter condition)        // what does it return? which holdings?
+
+Good:
+
+    Filter getAccountsWithAnyHoldingMatching(Filter condition)
+# Testing
+## Testing Naming Guide
+
+The name of a test should be ideally tell the reader what feature it is testing, what it is actually testing, and what it is expecting.
+
+Bad:
+testTransferAmount
+
+Better:
+testTransferAmountTooSmall
+
+Best:
+testTransferAmountTooSmallThrowsErrors
+
+*Make sure to use the idioms of the testing framework you're using.* So in Java you might do `testTransferAmountTooSmallThrowsErrors` while in Jest you might do `describe("Transfer", () => it("errors if amount is too small")`.
+## Splitting Tests
+Each test should test one "thing". That way if that thing fails, we can pinpoint very easily where it is. This is also better for running in parallel.
+
+Bad:
+testTransferCurrencyDefaultsAndRejectsUnknown
+
+Better:
+testNullTransferCurrencyDefaultsToAccountCurrency
+testUnknownTransferCurrencyThrowsErrors
+...
+# Anti-patterns
+## Empty ifs, magic conditions
+Bad:
+
+    if ("".equals(memo) && transfer.getTags().isEmpty()) {
+      // nothing to annotate
+    } else {
+      statement.add(getAnnotation(transfer, memo));
+    }
+
+Better:
+
+    final bool shouldAddAnnotation = !("".equals(memo) && transfer.getTags().isEmpty());
+    if (shouldAddAnnotation) {
+      statement.add(getAnnotation(transfer, memo));
+    }
+## Anti-patterns and their fixes
+### Switches vs Dynamic Dispatch
+Since this is not for hyperoptimized code, this is hard to maintain.
+Bad:
+
+    class Car { ... }
+    class Jaguar extends Car { ... }
+    class Mercedes extends Car { ... }
+    class BMW extends Car { ... }
+
+    void vroom(Car car) {
+        if (car instanceof Jaguar) {
+           System.out.println("Vrrrrrrroooom");
+        } else if (car instanceof Mercedes) {
+           System.out.println("German vrooom");
+        } else if (car instanceof BMW) {
+            System.out.println("Whistle");
+        }
+    }
+
+Better:
+This uses dynamic dispatch.
+
+    abstract class Car { abstract public void vroom(); }
+    class Jaguar extends Car {
+        public void vroom() {
+           System.out.println("Vrrrrrrroooom");
+        }
+    }
+    class Mercedes extends Car {
+        public void vroom() {
+           System.out.println("German vrooom");
+        }
+    }
+    class BMW extends Car {
+        public void vroom() {
+            System.out.println("Whistle");
+        }
+    }
+
+    void vroom(Car car) {
+        car.vroom();
+    }
+
+### Nesting
+Principles:
+Avoid unnecessary nesting. Avoid having more than one for/while loop in a function. If you have a loop in a function, it should be the main statement of that function.
+
+Use guard clauses
+
+Bad:
+
+    meaningful_fn_name() {
+        if (a) {
+            for (b) {
+                if (c)
+            }
+        }
+    }
+Better:
+This avoids nesting.
+
+    do_c() {
+        for (b) {
+            if (c)
+        }
+    }
+    meaningful_fn_name() {
+        if (a) {
+            do_c()
+        }
+    }
+
+Even Better:
+Using guard clauses and avoids nesting;
+
+    meaningful_fn_name() {
+        if (!a)
+            return;
+
+        for (b) {
+            if (c)
+        }
+    }
+
+Best (if code is being reused)
+
+    meaningful_fn_name() {
+
+        for (b) {
+            if (c)
+        }
+    }
+    meaningful_fn_name_guarded() {
+        if (!a)
+            return;
+        meaningful_fn_name();
+    }
+
+You can also shrink this by having the guards be in their own function, and have them either bubble returns up with booleans or throw errors.
+
+### Blank Lines Separate Paragraphs
+Treat a function body like prose: each paragraph is one step of the logic, and a blank line ends it.
+A reader should be able to skim the first line of each paragraph and follow what the function does.
+
+Rules:
+ - Group statements that serve the same purpose; put a blank line where the purpose changes.
+ - A statement that exists only to serve the next one stays attached to it. Separating them makes
+   the reader look back to see what the first was for.
+ - A statement whose result is used by later steps starts its own paragraph. Attaching it to a
+   short-lived neighbor makes it look as short-lived as that neighbor.
+ - Separate the outcome of a function from the steps that lead up to it.
+ - Don't separate everything. If every statement is its own paragraph, there are no paragraphs.
+
+This doesn't conflict with google-java-format: the formatter keeps single blank lines between statements.
+
+Bad:
+Everything runs together, so `prices` looks as short-lived as `hasCurrentPrices`.
+
+    final boolean hasOpenPositions = getHasOpenPositions(account);
+    if (!hasOpenPositions) {
+      return getEmptyRebalancePlan(account);
+    }
+    final MarketPrices prices = fetchMarketPrices(account.getHoldings());
+    final boolean hasCurrentPrices = !prices.getPricesBySymbol().isEmpty();
+    if (!hasCurrentPrices) {
+      return getHoldPlan(account);
+    }
+    return getRebalancePlan(account, prices, targetAllocation);
+
+Good:
+The purpose changes at each blank line, `hasCurrentPrices` stays with the condition it serves,
+`prices` is used later so it stands alone, and the outcome is its own step.
+
+    final boolean hasOpenPositions = getHasOpenPositions(account);
+    if (!hasOpenPositions) {
+      return getEmptyRebalancePlan(account);
+    }
+
+    final MarketPrices prices = fetchMarketPrices(account.getHoldings());
+
+    final boolean hasCurrentPrices = !prices.getPricesBySymbol().isEmpty();
+    if (!hasCurrentPrices) {
+      return getHoldPlan(account);
+    }
+
+    return getRebalancePlan(account, prices, targetAllocation);
+
+Bad:
+A blank line splits a condition from the `if` it serves, so the reader has to look back to see what the variable is for.
+
+    final boolean shouldAddAnnotation = !("".equals(memo) && transfer.getTags().isEmpty());
+
+    if (shouldAddAnnotation) {
+      statement.add(getAnnotation(transfer, memo));
+    }
+
+Good:
+
+    final boolean shouldAddAnnotation = !("".equals(memo) && transfer.getTags().isEmpty());
+    if (shouldAddAnnotation) {
+      statement.add(getAnnotation(transfer, memo));
+    }
+
+Bad:
+Blank lines between every statement are as hard to skim as none at all, because the paragraphs disappear.
+
+    final String url = "/api/v1/accounts/statement";
+
+    final String accountId = "ACC-1042";
+
+    final MvcResult result = mvc.perform(get(url).param("accountId", accountId)).andReturn();
+
+    final String content = result.getResponse().getContentAsString();
+
+Good:
+Setup is one paragraph, the call and reading its result is another.
+
+    final String url = "/api/v1/accounts/statement";
+    final String accountId = "ACC-1042";
+
+    final MvcResult result = mvc.perform(get(url).param("accountId", accountId)).andReturn();
+    final String content = result.getResponse().getContentAsString();
+
+#+end_src
