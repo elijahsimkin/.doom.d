@@ -1,5 +1,6 @@
 #+title: Agents
-#+begin_src md :tangle ~/.claude/claude.md
+#+name: agentsfile
+#+begin_src md
 # Behavior Guide
 For smaller tasks where an agent with less context would still perform fine, delegate to an agent with smaller context and/or who is not as intelligent who will report back to you to avoid avoid polluting main context with subtask related information or wasting tokens. Make sure to save the chain of thought though so if you need to consult it later, you can.
 
@@ -336,4 +337,10 @@ Setup is one paragraph, the call and reading its result is another.
     final MvcResult result = mvc.perform(get(url).param("accountId", accountId)).andReturn();
     final String content = result.getResponse().getContentAsString();
 
+#+end_src
+#+begin_src md :tangle  ~/.claude/claude.md :noweb yes
+<<agentsfile>>
+#+end_src
+#+begin_src md :tangle  ~/.codex/AGENTS.md :noweb yes
+<<agentsfile>>
 #+end_src
