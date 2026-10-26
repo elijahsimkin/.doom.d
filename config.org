@@ -1019,8 +1019,7 @@ terminal backend.
   :recipe (:host github
            :repo "stevemolitor/claude-code.el"))
 #+end_src
-
-   #+begin_src emacs-lisp :tangel config.el
+#+begin_src elisp :tangle config.el
 (use-package! claude-code
   :config
   (setq claude-code-terminal-backend 'ghostel)
