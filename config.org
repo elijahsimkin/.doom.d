@@ -843,6 +843,16 @@ To add visual line mode we can just tangle this into the config
 ~~(setq global-visual-line-mode t)~~
 Or turn on visual-line-mode globally/in text modes
 ~~(add-hook 'text-mode-hook #'visual-line-mode)~~
+
+Without the following configuration, relative line numbers will include folded content
+but jumping jumps over folded content (e.g. 9k will count the fold as 1 line). To fix this:
+#+begin_src elisp :tangle config.el
+;; We want wrapped lines to be indicated as a single line (to avoid j double jumping on a wrap)
+(setq display-line-numbers-visual-text-conversion nil)
+;; We want to only see visual lines to respect folding
+(setq-default display-line-numbers-type 'visual)
+#+end_src
+
 * Org
 #+begin_src elisp :tangle init.el
 (doom! :lang
