@@ -666,7 +666,8 @@ To control frames, I have added super (cmd )
        literate
        (default +bindings +smartparens))
 #+end_src
-* PACKAGES.EL
+* Doom Guide
+** Package Installation
 #+begin_src elisp :tangle packages.el
 ;;; $DOOMDIR/packages.el -*- lexical-binding: t; no-byte-compile: t -*-
 
@@ -721,8 +722,8 @@ To control frames, I have added super (cmd )
 ;; ...Or *all* packages (NOT RECOMMENDED; will likely break things)
 ;; (unpin! t)
 #+end_src
-* Configuration Guide
-** Font
+** Package Configuration
+*** Font
  Doom exposes five (optional) variables for controlling fonts in Doom:
 
 - ~doom-font~ -- the primary font to use
@@ -889,6 +890,7 @@ Set up keybinds
                (:prefix ("j" . "org-mode journal")
                         :desc "Open last journal entry" "o" #'org-journal-open-current-journal-file
                         :desc "Create new journal entry" "j" #'org-journal-new-entry)))
+#+end_src
 #+begin_src elisp :tangle config.el
 Add TODO done goes to done.org
 (setq org-archive-location "~/org/done.org::* Archived Tasks")
@@ -1047,14 +1049,14 @@ terminal backend.
 Annotate Git diffs with review comments and collect
 feedback for Claude Code.
 
-,#+begin_src emacs-lisp :tangle packages.el
+#+begin_src emacs-lisp :tangle packages.el
 (package! hunk-notes
   :recipe (:host github
            :repo "ArthurHeymans/emacs-hunk-notes"
            :files ("*.el")))
 #+end_src
 
-   ,#+begin_src emacs-lisp :tangle config.el
+   #+begin_src emacs-lisp :tangle config.el
 (use-package! hunk-notes
   :after magit
   :config
