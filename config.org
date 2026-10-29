@@ -859,6 +859,14 @@ but jumping jumps over folded content (e.g. 9k will count the fold as 1 line). T
        (org +pretty)               ; organize your plain life in plain text
 )
 #+end_src
+#+begin_src elisp :tangle config.el
+(use-package! org-modern
+  :after org
+  :config
+  (setq org-modern-star 'replace
+        org-modern-replace-stars "◉○◈◇✳")
+  (global-org-modern-mode 1))
+#+end_src
 Add org file locations
 #+begin_src elisp :tangle config.el
 (after! org
