@@ -451,6 +451,14 @@ model sees them anyway."
        :desc "Toggle prompt/response log" :n "d" #'my/minuet-toggle-debug))
 #+end_src
 
+** Project Management
+To make Projectile actually look for new files when they appear, we should turn off cache and to improve performance
+let it use things like Ripgrep or git ls-diff for finding files.
+#+begin_src elisp :tangle config.el
+(setq projectile-enable-caching nil)
+(setq projectile-indexing-method 'alien)
+#+end_src
+
 * Email
 #+begin_src elisp :tangle config.el
 (add-to-list 'load-path "/opt/homebrew/Cellar/mu/1.14.3/share/emacs/site-lisp/mu/mu4e")
@@ -892,7 +900,9 @@ Add org file locations
 ** Org Scheduling
 #+begin_src elisp :tangle packages.el
 (package! org-auto-scheduler
-  :recipe (:host github :repo "SSD2019/org-auto-scheduler"))
+  :recipe (:host github
+           :repo "SSD2019/org-auto-scheduler"
+           :files ("*.el")))
 (package! log4e)
 #+end_src
 #+begin_src elisp :tangle config.el
