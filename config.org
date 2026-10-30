@@ -919,15 +919,15 @@ Set up keybinds
                         :desc "Open last journal entry" "o" #'org-journal-open-current-journal-file
                         :desc "Create new journal entry" "j" #'org-journal-new-entry)))
 #+end_src
-#+begin_src elisp :tangle config.el
-Add TODO done goes to done.org
+Add task archiving -- do not do this it messes with org clock
+,#+begin_src
 (setq org-archive-location "~/org/done.org::* Archived Tasks")
 (defun my/org-archive-done-task ()
   (when (equal org-state "DONE")
     (org-archive-subtree-default)))
 (add-hook! 'org-after-todo-state-change-hook 'my/org-archive-done-task)
 
-#+end_src
+,#+end_src
 ** Org Clock
 This tracks time that is still being clocked (i.e. see how much time you're racking up before you've clocked out)
 #+begin_src elisp :tangle config.el
