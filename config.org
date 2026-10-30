@@ -888,6 +888,10 @@ Add org file locations
                         )
     )
 )
+(after! org
+  (setq org-babel-lilypond-ly-command "/opt/homebrew/bin/lilypond"))
+
+#+end_src
 ** Org Scheduling
 #+begin_src elisp :tangle packages.el
 (package! org-auto-scheduler
