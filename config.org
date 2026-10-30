@@ -899,8 +899,15 @@ Add org file locations
 ** Org Scheduling
 #+begin_src elisp :tangle packages.el
 (package! org-auto-scheduler
-  :recipe (:host github :repo "SSD2019/org-auto-scheduler"))
+  :recipe (:host github
+           :repo "SSD2019/org-auto-scheduler"
+           :files ("*.el")))
 (package! log4e)
+#+end_src
+#+begin_src elisp :tangle config.el
+(use-package! org-auto-scheduler
+  :defer t
+  :hook (org-mode . org-auto-scheduler-mode))
 #+end_src
 ** Org Journal
 Install
