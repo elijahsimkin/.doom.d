@@ -463,6 +463,7 @@ To control windows, C-w is the traditional prefix.
 To control frames, I have added super (cmd )
 #+begin_src elisp :tangle config.el
 (map! :nv (kbd "C-w s-n") #'make-frame-command)
+(map! :nv (kbd "C-w RET") #'make-frame-command)
 (map! :nv (kbd "C-w s-`") #'other-frame)
 #+end_src
 
