@@ -897,12 +897,16 @@ Add org file locations
                         )
     )
 )
+#+end_src
 ** Org Scheduling
 #+begin_src elisp :tangle packages.el
 (package! org-auto-scheduler
   :recipe (:host github
            :repo "SSD2019/org-auto-scheduler"
-           :files ("*.el")))
+           :files ("*.el")
+           ;; Its evil keybindings are a macro it never requires, so byte-compiling
+           ;; turns them into function calls that crash Doom on startup
+           :build (:not compile)))
 (package! log4e)
 #+end_src
 #+begin_src elisp :tangle config.el
