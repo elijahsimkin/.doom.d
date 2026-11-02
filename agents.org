@@ -7,6 +7,8 @@ For smaller tasks where an agent with less context would still perform fine, del
 # Style Guide
 
 Anti-patterns:
+## Options
+Usually creating an `options` object indicates an opening for polymorphism or functions.  Option objects require maintaining both the options and the mapping to the option function and then the actual function itself. This may be resolved with strategy objects, lambdas, or normal polymorphism.
 ## Magic Values
 ### Magic Numbers
 Bad:
@@ -126,7 +128,7 @@ testTransferAmountTooSmall
 Best:
 testTransferAmountTooSmallThrowsErrors
 
-*Make sure to use the idioms of the testing framework you're using.* So in Java you might do `testTransferAmountTooSmallThrowsErrors` while in Jest you might do `describe("Transfer", () => it("errors if amount is too small")`.
+,*Make sure to use the idioms of the testing framework you're using.* So in Java you might do `testTransferAmountTooSmallThrowsErrors` while in Jest you might do `describe("Transfer", () => it("errors if amount is too small")`.
 ## Splitting Tests
 Each test should test one "thing". That way if that thing fails, we can pinpoint very easily where it is. This is also better for running in parallel.
 
