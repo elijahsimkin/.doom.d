@@ -1,11 +1,15 @@
 #+title: Agents
-#+name: agentsfile
-#+begin_src md
+
+#+begin_src md :tangle ~/.claude/CLAUDE.md
 # Behavior Guide
 For smaller tasks where an agent with less context would still perform fine, delegate to an agent with smaller context and/or who is not as intelligent who will report back to you to avoid avoid polluting main context with subtask related information or wasting tokens. Make sure to save the chain of thought though so if you need to consult it later, you can.
 
-# Style Guide
+Delegate artifact creation to sub-agents.
+#+end_src
 
+#+name: agentsfile
+#+begin_src md
+# Style Guide
 Anti-patterns:
 ## Magic Values
 ### Magic Numbers
@@ -126,7 +130,7 @@ testTransferAmountTooSmall
 Best:
 testTransferAmountTooSmallThrowsErrors
 
-*Make sure to use the idioms of the testing framework you're using.* So in Java you might do `testTransferAmountTooSmallThrowsErrors` while in Jest you might do `describe("Transfer", () => it("errors if amount is too small")`.
+,*Make sure to use the idioms of the testing framework you're using.* So in Java you might do `testTransferAmountTooSmallThrowsErrors` while in Jest you might do `describe("Transfer", () => it("errors if amount is too small")`.
 ## Splitting Tests
 Each test should test one "thing". That way if that thing fails, we can pinpoint very easily where it is. This is also better for running in parallel.
 
@@ -338,9 +342,9 @@ Setup is one paragraph, the call and reading its result is another.
     final String content = result.getResponse().getContentAsString();
 
 #+end_src
-#+begin_src md :tangle  ~/.claude/claude.md :noweb yes
+#+begin_src md :tangle ~/.claude/CLAUDE.md :noweb yes
 <<agentsfile>>
 #+end_src
-#+begin_src md :tangle  ~/.codex/AGENTS.md :noweb yes
+#+begin_src md :tangle (if (file-directory-p "~/.codex") "~/.codex/AGENTS.md" "no")) :noweb yes
 <<agentsfile>>
 #+end_src
