@@ -1109,3 +1109,10 @@ feedback for Claude Code.
         hunk-notes-default-agent 'copy
         hunk-notes-auto-submit-to-agent nil))
 #+end_src
+** Keep Claude Code's session variables out of the env snapshot
+=doom env= (also run by =doom sync=) copies the shell's environment into Emacs. Run from inside a Claude Code session, it captured =CLAUDECODE=, =CLAUDE_CODE_CHILD_SESSION= etc., so every =claude= launched from a ghostel buffer thought it was a child session and didn't save its transcript.
+#+begin_src elisp :tangle cli.el
+;; bin/doom loads this after its CLI autoloads, so `doom-env-deny' is already defined.
+(add-to-list 'doom-env-deny "^CLAUDE")
+(add-to-list 'doom-env-deny "^AI_AGENT$")
+#+end_src
