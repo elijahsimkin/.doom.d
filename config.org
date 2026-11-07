@@ -902,7 +902,9 @@ Add org file locations
 #+begin_src elisp :tangle packages.el
 (package! org-auto-scheduler
   :recipe (:host github
-           :repo "SSD2019/org-auto-scheduler"
+           :repo "elijahsimkin/org-auto-scheduler"
+           ;; Upstream main + my open PRs (#4, #6); drop back to SSD2019 once they merge
+           :branch "personal"
            :files ("*.el")
            ;; Its evil keybindings are a macro it never requires, so byte-compiling
            ;; turns them into function calls that crash Doom on startup
@@ -912,7 +914,14 @@ Add org file locations
 #+begin_src elisp :tangle config.el
 (use-package! org-auto-scheduler
   :preface (setq load-prefer-newer t)
-  :demand t)
+  :demand t
+  :config
+  (setq org-auto-scheduler-start-time "10:00"
+        org-auto-scheduler-end-time   "19:00")
+  (map! :leader
+        (:prefix "o"
+                     (:prefix "a"
+                              :desc "Scheduler auto-mode" "s" #'org-auto-scheduler-dispatch))))
 #+end_src
 ** Org Journal
 Install
