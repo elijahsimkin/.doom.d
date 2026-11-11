@@ -4,6 +4,9 @@
 # Behavior Guide
 For smaller tasks where an agent with less context would still perform fine, delegate to an agent with smaller context and/or who is not as intelligent who will report back to you to avoid avoid polluting main context with subtask related information or wasting tokens. Make sure to save the chain of thought though so if you need to consult it later, you can.
 
+# Documentation Guide
+Prefer org files over md.
+
 # Style Guide
 
 Anti-patterns:
