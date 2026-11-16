@@ -1012,6 +1012,11 @@ We want to restore / add some of the functionality from neovim.
                           (dired default-directory)
                       )))
   #+end_src
++ Add mapping to enter evil normal mode
+  We are running into a problem in org agenda where we can't do ~vd~ or things like that to see what's going on. To remedy this, we add a global keymap to enter evil normal mode.
+  #+begin_src elisp :tangle config.el
+(map! :nivomorg (kbd "C-c C-\\") #'evil-normal-state)
+  #+end_src
 * Theme
 There are two ways to load a theme. Both assume the theme is installed and
 available. You can either set doom-theme' or manually load a theme with the
